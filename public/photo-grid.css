@@ -1,0 +1,68 @@
+/*
+   Masonry-friendly styles for the images in a single portfolio.
+   The .photo-grid is handled by JS for columns and positioning.
+*/
+.photo-grid {
+    width: 100%;
+    max-width: 1800px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 1rem;
+    padding: 0 0.5rem;
+}
+
+/* Each container for an image will be absolutely positioned by JavaScript. */
+.image-container {
+    position: absolute;
+    transition: transform 0.75s ease-in-out;
+}
+
+/*
+   The images themselves should keep their aspect ratio.
+*/
+.photo-grid img {
+    font-family: 'Oswald', Arial, sans-serif;
+    width: 100%;        /* fill the container width (set by JS) */
+    height: auto;       /* maintain aspect ratio */
+    border: none;
+    border-radius: 0;
+    object-fit: contain;
+}
+
+/* A simple back button (unchanged) */
+#btn-back {
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    border: 1px solid #444;
+    background: #eee;
+    margin-bottom: 1rem;
+}
+
+/*
+   Responsive breakpoints -
+   We no longer define columns here; the JavaScript does it based on screen width.
+   These breakpoints can still adjust padding or other styling if desired.
+*/
+@media (max-width: 1500px) {
+    .photo-grid {
+        padding: 0 0.5rem;
+    }
+}
+
+@media (max-width: 1200px) {
+    .photo-grid {
+        padding: 0 0.5rem;
+    }
+}
+
+@media (max-width: 900px) {
+    .photo-grid {
+        padding: 0 0.25rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .photo-grid {
+        padding: 0 0.25rem;
+    }
+}

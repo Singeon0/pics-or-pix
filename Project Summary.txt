@@ -1,0 +1,37 @@
+Project Summary
+
+I’m building a personal photography website that displays multiple “portfolios” (e.g., Spain, Urbex, etc.) in a dynamic way. To make this possible, I purchased a custom domain name and selected a suitable hosting plan that supports Node.js. My goal is to let the website automatically discover any new portfolio folder (complete with images) that I upload, then display it without needing to manually update the HTML.
+
+Key Technologies
+	•	Node.js + Express.js: Provides a simple server for handling API endpoints and dynamically reading folder contents.
+	•	Front-End: A single-page application (SPA) with HTML, CSS, and JavaScript. The JavaScript fetches data from the server (portfolio names, image paths) and updates the page content on the fly.
+
+Folder & File Structure
+	1.	Root Level
+	•	index.js (or server.js): The main Express server, listening on a specified port and hosting the site.
+	•	package.json: Lists project dependencies (like Express) and scripts for running the server.
+	2.	public/
+	•	index.html: The single-page template for the entire site.
+	•	home.css: Custom CSS for styling the home screen.
+	•	photo-grid.css: Custom CSS for styling portfolio grids
+	•	images/: Subfolders here represent different portfolios. Each folder has a cover.jpg plus other images.
+	3.	src/
+	•	main.js: Front-end JavaScript. It fetches portfolio data from the server, then dynamically updates the HTML to show covers or individual images.
+
+How It Works
+	1.	Server Setup:
+	•	index.js uses Express to serve static files (the public/ folder). It also defines two API endpoints:
+	1.	GET /api/portfolios: Returns a list of portfolio folders, each with its cover.jpg.
+	2.	GET /api/portfolios/:folderName: Returns the images within a specific portfolio folder.
+	2.	Dynamic Loading:
+	•	Whenever you add or remove a folder in public/images/, the server automatically detects it. No manual HTML edits are needed.
+	•	The front-end calls these endpoints to display the current list of portfolios and their images.
+	3.	Front-End (Single-Page):
+	•	index.html has a main <div id="app"></div> element.
+	•	main.js populates this element in two views:
+	1.	Portfolio Selection: Shows each folder’s cover.
+	2.	Individual Portfolio: Shows that folder’s images once a user clicks its cover.
+	4.	Hosting:
+	•	After finalizing everything locally, you upload the files to your Node-capable hosting environment. You also point your custom domain to this server. Visitors accessing your domain see the dynamic website powered by Node.js and Express.
+
+With this approach, you have a self-maintaining photography portfolio site: each new folder in public/images/ becomes a new portfolio, each folder’s cover.jpg automatically becomes the cover image, and all other images inside appear on demand.
