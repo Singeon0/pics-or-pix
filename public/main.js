@@ -2,13 +2,118 @@ document.addEventListener("DOMContentLoaded", () => {
     showPortfolioList();
 });
 
+// Keep track of the current portfolio images and index
+let currentPortfolioImages = [];
+let currentImageIndex = 0;
+
 /**
- * Checks if a file URL ends with .jpg (case insensitive)
- * @param {string} url - The URL to check
- * @returns {boolean}
+ * Creates the modal structure if it doesn't exist
+ * @returns {HTMLElement} The modal element
  */
-function isValidJpgImage(url) {
-    return url.toLowerCase().endsWith('.jpg');
+function createModal() {
+    let modal = document.querySelector('.modal-overlay');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <button class="modal-nav prev" aria-label="Previous image"></button>
+            <div class="modal-content">
+                <img src="" alt="Modal image">
+            </div>
+            <button class="modal-nav next" aria-label="Next image"></button>
+        `;
+
+        // Add event listeners
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        const prevBtn = modal.querySelector('.prev');
+        const nextBtn = modal.querySelector('.next');
+
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showPreviousImage();
+        });
+
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showNextImage();
+        });
+
+        document.body.appendChild(modal);
+    }
+    return modal;
+}
+
+/**
+ * Opens the modal with the specified image
+ * @param {string} imgSrc - Source of the image to show
+ * @param {number} index - Index of the image in the portfolio
+ */
+function openModal(imgSrc, index) {
+    const modal = createModal();
+    const modalContent = modal.querySelector('.modal-content');
+    const modalImg = modalContent.querySelector('img');
+
+    currentImageIndex = index;
+
+    // Set the new image source
+    modalImg.src = imgSrc;
+
+    // Show the modal with a slight delay to ensure smooth animation
+    requestAnimationFrame(() => {
+        modal.classList.add('active');
+        setTimeout(() => {
+            modalContent.classList.add('active');
+        }, 10);
+    });
+}
+
+/**
+ * Closes the modal
+ */
+function closeModal() {
+    const modal = document.querySelector('.modal-overlay');
+    const modalContent = modal.querySelector('.modal-content');
+
+    modalContent.classList.remove('active');
+    setTimeout(() => {
+        modal.classList.remove('active');
+    }, 300);
+}
+
+/**
+ * Shows the next image in the portfolio
+ */
+function showNextImage() {
+    currentImageIndex = (currentImageIndex + 1) % currentPortfolioImages.length;
+    updateModalImage();
+}
+
+/**
+ * Shows the previous image in the portfolio
+ */
+function showPreviousImage() {
+    currentImageIndex = (currentImageIndex - 1 + currentPortfolioImages.length) % currentPortfolioImages.length;
+    updateModalImage();
+}
+
+/**
+ * Updates the modal image while maintaining the modal state
+ */
+function updateModalImage() {
+    const modalContent = document.querySelector('.modal-content');
+    const modalImg = modalContent.querySelector('img');
+
+    modalContent.classList.remove('active');
+
+    setTimeout(() => {
+        modalImg.src = currentPortfolioImages[currentImageIndex];
+        modalContent.classList.add('active');
+    }, 300);
 }
 
 /**
@@ -36,12 +141,6 @@ function showPortfolioList() {
             grid.className = "portfolio-grid";
 
             portfolios.forEach((p) => {
-                // Verify cover image is a .jpg file
-                if (!isValidJpgImage(p.cover)) {
-                    console.error(`Invalid cover image format for portfolio ${p.name}`);
-                    return;
-                }
-
                 const item = document.createElement("div");
                 item.className = "portfolio-item";
                 item.innerHTML = `
@@ -108,22 +207,20 @@ function getDominantColor(img) {
 }
 
 /**
- * Creates an image element if the image is a valid jpg
+ * Creates an image element
  * @param {string} imgSrc - The source URL of the image
- * @returns {HTMLElement|null}
+ * @param {number} index - The index of the image in the portfolio
+ * @returns {HTMLElement}
  */
-function createImage(imgSrc) {
-    // Verify the image is a .jpg file
-    if (!isValidJpgImage(imgSrc)) {
-        console.error(`Invalid image format: ${imgSrc}`);
-        return null;
-    }
-
+function createImage(imgSrc, index) {
     const imgContainer = document.createElement("div");
     imgContainer.className = "image-container";
 
     const img = document.createElement("img");
     img.src = imgSrc;
+
+    // Add click event for modal
+    imgContainer.addEventListener('click', () => openModal(imgSrc, index));
 
     imgContainer.appendChild(img);
     return imgContainer;
@@ -164,20 +261,21 @@ function showSinglePortfolio(folderName) {
             grid.style.opacity = "0"; // Start hidden
             grid.style.transition = "opacity 0.5s ease-in-out";
 
-            // Filter out non-jpg images before shuffling
-            const validImages = data.images.filter(imgSrc => isValidJpgImage(imgSrc));
-            // Shuffle the filtered images array before creating elements
-            const shuffledImages = shuffleArray([...validImages]);
+            // Shuffle the images array before creating elements
+            const shuffledImages = shuffleArray([...data.images]);
+            // Store the current portfolio images for modal navigation
+            currentPortfolioImages = shuffledImages;
 
             // Create images
-            shuffledImages.forEach((imgSrc) => {
-                const imgContainer = createImage(imgSrc);
-                if (imgContainer) {  // Only append if image creation was successful
-                    grid.appendChild(imgContainer);
-                }
+            shuffledImages.forEach((imgSrc, index) => {
+                const imgContainer = createImage(imgSrc, index);
+                grid.appendChild(imgContainer);
             });
 
             app.appendChild(grid);
+
+            // Create modal (but don't show it yet)
+            createModal();
 
             // Wait for all images to load, then apply masonry layout with delay
             const allImages = Array.from(grid.querySelectorAll("img"));

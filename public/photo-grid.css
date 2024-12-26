@@ -15,6 +15,7 @@
 .image-container {
     position: absolute;
     transition: transform 0.75s ease-in-out;
+    cursor: pointer;
 }
 
 /*
@@ -27,6 +28,100 @@
     border: none;
     border-radius: 0;
     object-fit: contain;
+}
+
+/* Modal overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 1000;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* Modal image container */
+.modal-content {
+    position: relative;
+    max-height: 90vh;
+    max-width: 90vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content img {
+    max-height: 90vh;
+    max-width: 90vw;
+    object-fit: contain;
+    transform: scale(0.9);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.modal-content.active img {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* Navigation arrows */
+.modal-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #333;
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 1rem;
+    transition: opacity 0.3s ease;
+    opacity: 0.6;
+    z-index: 1001;
+}
+
+.modal-nav:hover {
+    opacity: 1;
+}
+
+.modal-nav.prev {
+    left: 1rem;
+}
+
+.modal-nav.next {
+    right: 1rem;
+}
+
+.modal-nav::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    border-top: 2px solid #333;
+    border-right: 2px solid #333;
+}
+
+.modal-nav.prev::before {
+    left: 60%;
+    transform: translateY(-50%) rotate(-135deg);
+}
+
+.modal-nav.next::before {
+    right: 60%;
+    transform: translateY(-50%) rotate(45deg);
 }
 
 /* A simple back button (unchanged) */
@@ -64,5 +159,13 @@
 @media (max-width: 600px) {
     .photo-grid {
         padding: 0 0.25rem;
+    }
+    .modal-nav {
+        font-size: 1.5rem;
+        padding: 0.5rem;
+    }
+    .modal-nav::before {
+        width: 15px;
+        height: 15px;
     }
 }
