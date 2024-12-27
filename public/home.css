@@ -36,6 +36,7 @@ body {
     position: relative;
     overflow: hidden;
     aspect-ratio: 3 / 4;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .portfolio-item img {
@@ -71,6 +72,22 @@ body {
 
 .portfolio-item:hover h2 {
     opacity: 1;
+}
+
+/* Touch device handling */
+@media (hover: none) {
+    .portfolio-item h2 {
+        opacity: 1;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .portfolio-item img {
+        transform: scale(1);
+    }
+
+    .portfolio-item:hover img {
+        transform: scale(1);
+    }
 }
 
 /* Responsive breakpoints */
