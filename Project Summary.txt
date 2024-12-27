@@ -1,37 +1,204 @@
+Below is an expanded and more detailed project summary. It covers everything from the core idea behind the application to how each file is used and how the VPS hosting is configured. This version aims to give you (and anyone else looking at your code) a clear, step-by-step understanding of how the site works, how it’s organized, and how it’s deployed.
+
 Project Summary
 
-I’m building a personal photography website that displays multiple “portfolios” (e.g., Spain, Urbex, etc.) in a dynamic way. To make this possible, I purchased a custom domain name and selected a suitable hosting plan that supports Node.js. My goal is to let the website automatically discover any new portfolio folder (complete with images) that I upload, then display it without needing to manually update the HTML.
+Overview
 
-Key Technologies
-	•	Node.js + Express.js: Provides a simple server for handling API endpoints and dynamically reading folder contents.
-	•	Front-End: A single-page application (SPA) with HTML, CSS, and JavaScript. The JavaScript fetches data from the server (portfolio names, image paths) and updates the page content on the fly.
+Project Name: Pics or Pix
+Domain: pics-or-pix.uk
+Hosting: VPS on Hostinger, Ubuntu 24.04, using Nginx as a reverse proxy for Node.js.
 
-Folder & File Structure
-	1.	Root Level
-	•	index.js (or server.js): The main Express server, listening on a specified port and hosting the site.
-	•	package.json: Lists project dependencies (like Express) and scripts for running the server.
-	2.	public/
-	•	index.html: The single-page template for the entire site.
-	•	home.css: Custom CSS for styling the home screen.
-	•	photo-grid.css: Custom CSS for styling portfolio grids
-	•	images/: Subfolders here represent different portfolios. Each folder has a cover.jpg plus other images.
-	3.	src/
-	•	main.js: Front-end JavaScript. It fetches portfolio data from the server, then dynamically updates the HTML to show covers or individual images.
+Goal:
+	•	Create a self-maintaining photography website that displays dynamic portfolios.
+	•	Each portfolio is a folder of images (e.g., “Spain,” “Urbex”) with a single cover.jpg.
+	•	The site auto-detects new folders and images without manual HTML edits.
 
-How It Works
-	1.	Server Setup:
-	•	index.js uses Express to serve static files (the public/ folder). It also defines two API endpoints:
-	1.	GET /api/portfolios: Returns a list of portfolio folders, each with its cover.jpg.
-	2.	GET /api/portfolios/:folderName: Returns the images within a specific portfolio folder.
-	2.	Dynamic Loading:
-	•	Whenever you add or remove a folder in public/images/, the server automatically detects it. No manual HTML edits are needed.
-	•	The front-end calls these endpoints to display the current list of portfolios and their images.
-	3.	Front-End (Single-Page):
-	•	index.html has a main <div id="app"></div> element.
-	•	main.js populates this element in two views:
-	1.	Portfolio Selection: Shows each folder’s cover.
-	2.	Individual Portfolio: Shows that folder’s images once a user clicks its cover.
-	4.	Hosting:
-	•	After finalizing everything locally, you upload the files to your Node-capable hosting environment. You also point your custom domain to this server. Visitors accessing your domain see the dynamic website powered by Node.js and Express.
+How the Application Works
+	1.	User Visits the Site
+	•	The site is served at pics-or-pix.uk.
+	•	Nginx receives the request on port 80 (or 443 if using HTTPS) and forwards it to the Node.js application running (commonly) on port 3000.
+	2.	Server-Side Logic (Node.js + Express)
+	•	index.js (or server.js) is the entry point for the Node application. It does the following:
+	1.	Serves Static Files from the public/ folder (where index.html, CSS, and front-end JS reside).
+	2.	Handles API Endpoints:
+	•	GET /api/portfolios: Returns a list of all subfolders in public/images/. Each folder name is returned with a path to its cover.jpg.
+	•	GET /api/portfolios/:folderName: Returns a JSON array of images (excluding cover.jpg) in the specified folder.
+	3.	Reads Folders Dynamically: When you add or remove folders inside public/images/, the server instantly reflects these changes.
+	3.	Front-End Single-Page Application (SPA)
+	•	index.html loads the initial layout, fonts, and CSS. It also includes multiple <script> tags for your JavaScript files, such as utils.js, layout.js, modal.js, portfolioService.js, and main.js.
+	•	When a user lands on the homepage, JavaScript makes a request to /api/portfolios to fetch the list of portfolio folders.
+	•	Each folder’s cover.jpg is displayed in a grid, and clicking on a cover triggers another API call to /api/portfolios/:folderName to fetch all images in that folder.
+	4.	Displaying Portfolios
+	•	After fetching the images for a specific portfolio, the front-end arranges them into a masonry-style grid.
+	•	Clicking on any image opens a modal. Users can navigate to the next or previous image without leaving the page.
+	5.	No Manual Updates
+	•	Whenever you upload a new folder with a cover.jpg (and more images) under public/images/, the site detects it as a new portfolio.
+	•	You don’t need to change any HTML or code. The API endpoints and front-end automatically handle new or removed portfolios.
 
-With this approach, you have a self-maintaining photography portfolio site: each new folder in public/images/ becomes a new portfolio, each folder’s cover.jpg automatically becomes the cover image, and all other images inside appear on demand.
+Detailed File & Folder Structure
+
+.
+├─ index.js                 # Main Express server script
+├─ package.json             # Lists Node.js dependencies (Express, etc.)
+├─ public
+│  ├─ index.html            # The single-page template
+│  ├─ home.css              # Styles for homepage/cover grid
+│  ├─ photo-grid.css        # Styles for the masonry grid
+│  ├─ images
+│  │  ├─ Spain
+│  │  │  ├─ cover.jpg
+│  │  │  ├─ spain1.jpg
+│  │  │  └─ spain2.jpg
+│  │  └─ Urbex
+│  │     ├─ cover.jpg
+│  │     ├─ urbex1.jpg
+│  │     └─ urbex2.jpg
+│  └─ scripts
+│     ├─ utils.js
+│     ├─ layout.js
+│     ├─ modal.js
+│     ├─ portfolioService.js
+│     └─ main.js
+└─ ...
+
+Node/Express Server
+	•	index.js
+	•	Uses express.static(...) to serve the public/ folder.
+	•	Sets up routes:
+	•	GET /api/portfolios: Lists subfolders of public/images/ as portfolios.
+	•	GET /api/portfolios/:folderName: Returns images from a specific folder.
+	•	Listens on a specified port (often 3000), and logs a startup message.
+	•	Example usage:
+
+node index.js
+# or
+npm start
+
+
+
+Front-End JavaScript Files (all inside public/scripts/)
+	1.	main.js
+	•	Purpose: Entry point that runs as soon as the DOM is loaded.
+	•	Global Variables:
+	•	SHOW_IMAGES_DELAY, MASONRY_GAP, MODAL_TRANSITION_DURATION, etc., to adjust behavior (timings, animation durations).
+	•	currentPortfolioImages and currentImageIndex track the images currently loaded in the modal.
+	•	Event: document.addEventListener("DOMContentLoaded", ...) calls showPortfolioList(), initiating the home view.
+	2.	modal.js
+	•	Purpose: Handles all modal-related functionality—opening, closing, navigating images.
+	•	Functions:
+	•	createModal(): Ensures a .modal-overlay is in the DOM.
+	•	openModal(imgSrc, index): Opens the modal for a specific image.
+	•	closeModal(): Closes the modal overlay.
+	•	showNextImage(), showPreviousImage(): Cycles through currentPortfolioImages.
+	•	updateModalImage(): Updates the displayed image while keeping the modal open.
+	3.	portfolioService.js
+	•	Purpose: Contains the logic to fetch portfolio data from the server and display it.
+	•	Key Functions:
+	•	showPortfolioList():
+	•	Fetches /api/portfolios, builds a grid of portfolio covers, each linking to its folder.
+	•	showSinglePortfolio(folderName):
+	•	Fetches /api/portfolios/:folderName to get images, sets up the masonry grid, and prepares the modal.
+	•	createImage(imgSrc, index):
+	•	Creates an individual .image-container with an <img> element. Clicking the container calls openModal().
+	4.	layout.js
+	•	Purpose: Handles the masonry layout (i.e., the multi-column grid with varied image heights).
+	•	Key Functions:
+	•	getColumnCount(): Returns the number of columns (1, 2, or 3) based on window width breakpoints.
+	•	layoutMasonry(container, colCount, gap): Positions each .image-container absolutely, calculates column widths, and sets the container’s total height to accommodate all items.
+	5.	utils.js
+	•	Purpose: General helper utilities used by the other scripts.
+	•	Functions:
+	•	shuffleArray(array): Implements Fisher-Yates algorithm to randomize the order of images.
+	•	getDominantColor(img): Creates a hidden <canvas> to compute the average (R, G, B) color of an image. Used for overlay backgrounds.
+	•	waitForImagesToLoad(images): Returns a promise resolving after all <img> elements are either loaded or errored.
+
+Hosting & Deployment Details
+
+Hosting Environment
+	•	VPS Provider: Hostinger
+	•	Operating System: Ubuntu 24.04
+	•	Web Server: Nginx (reverse proxy)
+	•	Domain Name: pics-or-pix.uk
+
+Server Access
+	•	SSH:
+	•	IP: 46.202.141.52
+	•	Username: root
+	•	Port: 22
+	•	Command: ssh root@46.202.141.52
+
+Nginx Configuration (Conceptual Example)
+	1.	Install Nginx:
+
+sudo apt update
+sudo apt install nginx
+
+
+	2.	Create a Server Block (e.g., /etc/nginx/sites-available/picsorpix):
+
+server {
+    server_name pics-or-pix.uk;
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+    listen 80;
+}
+
+
+	3.	Enable & Test:
+
+sudo ln -s /etc/nginx/sites-available/picsorpix /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+
+
+	4.	Run Node.js on Port 3000:
+
+cd /path/to/your/project
+npm install
+npm run start
+# or "node index.js"
+
+
+	5.	Optional: Use PM2 or systemd to run Node.js in the background and keep it alive if the VPS restarts.
+
+Usage Flow
+	1.	Local Development:
+	•	Clone the repository locally, run npm install, and start the server with node index.js.
+	•	Visit http://localhost:3000 in your browser.
+	•	Add test folders inside public/images/ to see them appear automatically.
+	2.	Deployment:
+	•	Upload the project files to your VPS (via Git, SCP, or other means).
+	•	Install dependencies on the VPS (e.g., npm install).
+	•	Run the server: node index.js (or npm start).
+	•	Ensure Nginx is proxying requests to your Node.js process on port 3000.
+	•	Verify the site at http://pics-or-pix.uk.
+	3.	Adding/Removing Portfolios:
+	•	Simply SSH into the VPS, navigate to public/images/, and add or remove a folder.
+	•	Each folder must have a cover.jpg for display in the portfolio list.
+	•	No code changes needed—refresh the site to see the updated list.
+
+Why This Setup Is Effective
+	1.	Simplicity:
+	•	Node.js + Express automatically discovers folder changes; no database or complex CMS needed.
+	2.	Performance:
+	•	Nginx handles static file serving efficiently and can be scaled if traffic grows.
+	•	Node.js runs asynchronously, avoiding blocking on I/O operations.
+	3.	Maintainability:
+	•	Modular front-end scripts (split into modal.js, layout.js, utils.js, etc.) make it easier to expand features (e.g., add new transitions or new layout styles).
+	•	Minimal global variables reduce confusion, and JSDoc comments help document each function.
+	4.	Scalability:
+	•	Additional features—such as user accounts, an admin panel, or a database—can be integrated as needed.
+	•	The server can be clustered or mirrored across multiple VPS instances if the site needs to handle more load.
+
+In Summary
+	•	You have a Node.js/Express back end that dynamically generates portfolio data from folder structures.
+	•	A front-end SPA built with pure JavaScript fetches this data, shows cover images, arranges them in a masonry layout, and presents images in a modal.
+	•	Nginx on your Ubuntu VPS proxies incoming traffic to Node.js on port 3000 and provides your domain name with a clean, professional hosting environment.
+
+This structure yields a flexible and maintainable photography website. You can add new image folders on the fly, quickly spin up new image sets, and rely on Express endpoints plus the front-end code to handle everything else automatically.
