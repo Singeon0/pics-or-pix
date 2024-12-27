@@ -4,7 +4,6 @@
 
 // -- Timing & Animation
 const DELAY_BEFORE_SHOWING_PORTFOLIO = 5; // Delay (ms) before showing the portfolio grid
-const MOVE_THRESHOLD = 10;                  // Finger-move threshold for touch scrolling
 
 // -- Masonry Layout
 const MASONRY_COLUMN_GAP = 12;             // Gap (in px) between items in the masonry grid
@@ -12,8 +11,6 @@ const MASONRY_COLUMN_GAP = 12;             // Gap (in px) between items in the m
 // -- State Management
 let currentPortfolioImages = [];
 let currentImageIndex = 0;
-let activePortfolioItem = null;
-let isTouch = false;
 
 /*************************************************
  *  EVENT LISTENERS & INIT
@@ -21,12 +18,6 @@ let isTouch = false;
 
 document.addEventListener("DOMContentLoaded", () => {
     showPortfolioList();
-});
-
-// Detect touch device
-window.addEventListener('touchstart', function onFirstTouch() {
-    isTouch = true;
-    window.removeEventListener('touchstart', onFirstTouch);
 });
 
 /*************************************************
@@ -48,13 +39,6 @@ function showPortfolioList() {
             const app = document.getElementById("app");
             // Clear the container and add clickable title
             app.innerHTML = `<h1 class="site-title" style="cursor: pointer;">PICSORPIX</h1>`;
-
-            // Reset active portfolio item when showing list
-            activePortfolioItem = null;
-
-            // Add click event to title
-            const title = app.querySelector('.site-title');
-            title.addEventListener('click', () => showPortfolioList());
 
             // Create a grid container
             const grid = document.createElement("div");
@@ -79,7 +63,7 @@ function showPortfolioList() {
                         `rgba(${color.r}, ${color.g}, ${color.b}, 0.7)`;
                 });
 
-                // Desktop/mobile click (handles 2-tap logic on mobile)
+                // Click to open portfolio
                 item.addEventListener("click", (e) => {
                     e.preventDefault();
                     handlePortfolioInteraction(item, p.name);
@@ -88,12 +72,11 @@ function showPortfolioList() {
                 grid.appendChild(item);
             });
 
-            app.appendChild(grid);
+            // Add click event to title
+            const title = app.querySelector('.site-title');
+            title.addEventListener('click', () => showPortfolioList());
 
-            // If it's a touch device, initialize our global scroll-based hover detection
-            if (isTouch) {
-                initGlobalTouchScroll();
-            }
+            app.appendChild(grid);
         })
         .catch((err) => {
             console.error(err);
@@ -101,29 +84,12 @@ function showPortfolioList() {
 }
 
 /**
- * Handle portfolio item interactions for both desktop and mobile
+ * Handle portfolio item interaction
  * @param {HTMLElement} item - The portfolio item element
  * @param {string} portfolioName - The name of the portfolio
  */
 function handlePortfolioInteraction(item, portfolioName) {
-    if (!isTouch) {
-        // Desktop behavior - direct navigation
-        showSinglePortfolio(portfolioName);
-        return;
-    }
-
-    // Mobile behavior
-    if (activePortfolioItem === item) {
-        // Second tap on same item - navigate
-        showSinglePortfolio(portfolioName);
-    } else {
-        // First tap or tap on different item
-        if (activePortfolioItem) {
-            activePortfolioItem.classList.remove('active');
-        }
-        item.classList.add('active');
-        activePortfolioItem = item;
-    }
+    showSinglePortfolio(portfolioName);
 }
 
 /*************************************************
@@ -391,7 +357,7 @@ function getDominantColor(img) {
 }
 
 /**
- * Utility: Waits for all images in the array to finish loading.
+ * Utility: Waits for all images to finish loading.
  * @param {HTMLImageElement[]} images
  * @returns {Promise<void>}
  */
@@ -480,78 +446,4 @@ function layoutMasonry(container, colCount, gap) {
     // Adjust container height so it wraps all columns
     const maxHeight = Math.max(...colHeights);
     container.style.height = `${maxHeight}px`;
-}
-
-/*************************************************
- *  GLOBAL TOUCH SCROLL (MOBILE HOVER)
- *************************************************/
-
-/**
- * Global method to detect scroll-based hover on mobile devices
- * without blocking normal page scrolling.
- */
-function initGlobalTouchScroll() {
-    let startX = 0;
-    let startY = 0;
-    let hasMoved = false;
-
-    // We add the listener with { passive: false } so we can receive
-    // touchmove events even as the page scrolls. We do NOT call preventDefault().
-    document.addEventListener('touchstart', onTouchStart, { passive: false });
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-    document.addEventListener('touchend', onTouchEnd, { passive: false });
-
-    function onTouchStart(e) {
-        if (!e.touches || e.touches.length < 1) return;
-        hasMoved = false;
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-    }
-
-    function onTouchMove(e) {
-        if (!e.touches || e.touches.length < 1) return;
-        const diffX = Math.abs(e.touches[0].clientX - startX);
-        const diffY = Math.abs(e.touches[0].clientY - startY);
-
-        // If user moved finger more than threshold => we consider it scrolling
-        if (diffX > MOVE_THRESHOLD || diffY > MOVE_THRESHOLD) {
-            hasMoved = true;
-
-            // Which element is under the finger?
-            const touch = e.touches[0];
-            const el = document.elementFromPoint(touch.clientX, touch.clientY);
-
-            // If it's a .portfolio-item or a child of it, we find that .portfolio-item
-            const portfolioItem = findParentPortfolioItem(el);
-            if (portfolioItem) {
-                // Deactivate the previous item
-                if (activePortfolioItem && activePortfolioItem !== portfolioItem) {
-                    activePortfolioItem.classList.remove('active');
-                }
-                // Activate the new one if it's not already active
-                if (portfolioItem !== activePortfolioItem) {
-                    portfolioItem.classList.add('active');
-                    activePortfolioItem = portfolioItem;
-                }
-            }
-        }
-    }
-
-    function onTouchEnd(e) {
-        // If we never moved beyond threshold, it's a tap; existing "click" handlers handle it.
-        // If we scrolled, we already updated hover in onTouchMove().
-        // Nothing else to do here.
-    }
-
-    // Utility: climb the DOM to find .portfolio-item
-    function findParentPortfolioItem(node) {
-        let current = node;
-        while (current && current !== document.body) {
-            if (current.classList && current.classList.contains('portfolio-item')) {
-                return current;
-            }
-            current = current.parentNode;
-        }
-        return null;
-    }
 }
