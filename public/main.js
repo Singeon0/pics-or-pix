@@ -5,9 +5,6 @@
 // -- Timing & Animation
 const DELAY_BEFORE_SHOWING_PORTFOLIO = 5; // Delay (ms) before showing the portfolio grid
 
-// -- Masonry Layout
-const MASONRY_COLUMN_GAP = 12;             // Gap (in px) between items in the masonry grid
-
 // -- State Management
 let currentPortfolioImages = [];
 let currentImageIndex = 0;
@@ -98,7 +95,14 @@ function handlePortfolioInteraction(item, portfolioName) {
 
 /**
  * Fetch images for a single portfolio (folder)
- * Display them in a masonry grid with a delay
+ */
+/**
+ * Fetch images for a single portfolio (folder)
+ * Display them in a grid
+ */
+/**
+ * Fetch images for a single portfolio (folder)
+ * Display them in a grid with lazy loading
  */
 function showSinglePortfolio(folderName) {
     // Apply special styling for Urbex portfolio
@@ -127,7 +131,6 @@ function showSinglePortfolio(folderName) {
 
             const grid = document.createElement("div");
             grid.className = "photo-grid";
-            grid.style.position = "relative"; // for absolute positioning in masonry
             grid.style.opacity = "0"; // Start hidden
             grid.style.transition = "opacity 0.5s ease-in-out";
 
@@ -137,7 +140,7 @@ function showSinglePortfolio(folderName) {
             // Store the current portfolio images for modal navigation
             currentPortfolioImages = shuffledImages;
 
-            // Create images
+            // Create images with lazy loading
             shuffledImages.forEach((imgSrc, index) => {
                 const imgContainer = createImage(imgSrc, index);
                 grid.appendChild(imgContainer);
@@ -148,26 +151,13 @@ function showSinglePortfolio(folderName) {
             // Create modal (but don't show it yet)
             createModal();
 
-            // Wait for all images to load, then apply masonry layout with delay
-            const allImages = Array.from(grid.querySelectorAll("img"));
-            waitForImagesToLoad(allImages).then(() => {
-                // First apply the masonry layout
-                layoutMasonry(grid, getColumnCount(), MASONRY_COLUMN_GAP);
+            // Initialize lazy loading
+            initLazyLoading();
 
-                // Add delay before showing the grid
-                setTimeout(() => {
-                    grid.style.opacity = "1"; // Show grid
-                }, DELAY_BEFORE_SHOWING_PORTFOLIO);
-            });
-
-            // Re-layout on window resize (with debouncing)
-            let resizeTimeout;
-            window.addEventListener("resize", () => {
-                clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(() => {
-                    layoutMasonry(grid, getColumnCount(), MASONRY_COLUMN_GAP);
-                }, 200);
-            });
+            // Show grid after a short delay
+            setTimeout(() => {
+                grid.style.opacity = "1"; // Show grid
+            }, DELAY_BEFORE_SHOWING_PORTFOLIO);
         })
         .catch((err) => console.error(err));
 }
@@ -178,15 +168,32 @@ function showSinglePortfolio(folderName) {
  * @param {number} index - The index of the image in the portfolio
  * @returns {HTMLElement}
  */
+
+/**
+ * Creates an image element with lazy loading
+ * @param {string} imgSrc - The source URL of the image
+ * @param {number} index - The index of the image in the portfolio
+ * @returns {HTMLElement}
+ */
 function createImage(imgSrc, index) {
     const imgContainer = document.createElement("div");
     imgContainer.className = "image-container";
 
     const img = document.createElement("img");
-    img.src = imgSrc;
+    // Set a placeholder image or leave src empty
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    // Store the actual image URL in data-src
+    img.dataset.src = imgSrc;
+    img.alt = `Portfolio image ${index + 1}`;
+    img.className = 'lazy';
 
     // Add click event for modal
-    imgContainer.addEventListener('click', () => openModal(imgSrc, index));
+    imgContainer.addEventListener('click', () => {
+        // Ensure image is loaded before opening modal
+        if (!img.classList.contains('lazy')) {
+            openModal(imgSrc, index);
+        }
+    });
 
     imgContainer.appendChild(img);
     return imgContainer;
@@ -357,93 +364,39 @@ function getDominantColor(img) {
 }
 
 /**
- * Utility: Waits for all images to finish loading.
- * @param {HTMLImageElement[]} images
- * @returns {Promise<void>}
+ * Lazy loading implementation using Intersection Observer
  */
-function waitForImagesToLoad(images) {
-    return Promise.all(images.map(img => {
-        return new Promise(resolve => {
-            if (img.complete) {
-                resolve();
-            } else {
-                img.addEventListener("load", resolve);
-                img.addEventListener("error", resolve);
+function initLazyLoading() {
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                loadImage(img);
+                observer.unobserve(img);
             }
         });
-    }));
-}
-
-/*************************************************
- *  MASONRY LAYOUT FUNCTIONS
- *************************************************/
-
-/**
- * Determines how many columns should be used based on screen width.
- * Adjust breakpoints as needed to match your design.
- * @returns {number} - number of columns
- */
-function getColumnCount() {
-    const width = window.innerWidth;
-    // Large screen -> 3 columns, medium -> 2, small -> 1
-    if (width > 900) {
-        return 3;
-    } else if (width > 600) {
-        return 2;
-    } else {
-        return 1;
-    }
-}
-
-/**
- * Positions .image-container elements in a masonry layout using absolute positioning.
- * @param {HTMLElement} container - The .photo-grid container
- * @param {number} colCount - number of columns
- * @param {number} gap - gap (in px) between items
- */
-function layoutMasonry(container, colCount, gap) {
-    const containerWidth = container.clientWidth;
-    // Calculate column width (subtracting total gap space)
-    const columnWidth = (containerWidth - (colCount - 1) * gap) / colCount;
-
-    // Track each column's current height
-    const colHeights = new Array(colCount).fill(0);
-
-    // Grab all items
-    const items = Array.from(container.querySelectorAll(".image-container"));
-
-    items.forEach(item => {
-        // Ensure absolute positioning & set item width
-        item.style.position = "absolute";
-        item.style.width = `${columnWidth}px`;
-
-        // If the <img> is loaded, we can compute height
-        const img = item.querySelector("img");
-        const naturalWidth = img.naturalWidth || 1;  // avoid division by zero
-        const naturalHeight = img.naturalHeight || 1;
-        const aspectRatio = naturalHeight / naturalWidth;
-        const itemHeight = Math.round(columnWidth * aspectRatio);
-
-        // Find the shortest column
-        let minIndex = 0;
-        for (let i = 1; i < colHeights.length; i++) {
-            if (colHeights[i] < colHeights[minIndex]) {
-                minIndex = i;
-            }
-        }
-
-        // Compute x/y
-        const x = minIndex * (columnWidth + gap);
-        const y = colHeights[minIndex];
-
-        // Position the item
-        item.style.transform = `translate(${x}px, ${y}px)`;
-
-        // Update column height
-        colHeights[minIndex] += itemHeight + gap;
+    }, {
+        rootMargin: '50px 0px', // Start loading images 50px before they enter viewport
+        threshold: 0.1
     });
 
-    // Adjust container height so it wraps all columns
-    const maxHeight = Math.max(...colHeights);
-    container.style.height = `${maxHeight}px`;
+    // Observe all lazy images
+    document.querySelectorAll('img.lazy').forEach(img => {
+        imageObserver.observe(img);
+    });
+}
+
+/**
+ * Loads the actual image
+ * @param {HTMLImageElement} img - The image element to load
+ */
+function loadImage(img) {
+    const actualSrc = img.dataset.src;
+    if (actualSrc) {
+        img.src = actualSrc;
+        img.addEventListener('load', () => {
+            img.classList.remove('lazy');
+            img.removeAttribute('data-src');
+        });
+    }
 }
