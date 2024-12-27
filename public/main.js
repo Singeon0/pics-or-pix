@@ -5,15 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
 // Keep track of the current portfolio images and index
 let currentPortfolioImages = [];
 let currentImageIndex = 0;
-let activePortfolioItem = null;
-let isTouch = false;
-const TIME_OUT_LOADING_PORTFOLIO = 5;
-
-// Detect touch device
-window.addEventListener('touchstart', function onFirstTouch() {
-    isTouch = true;
-    window.removeEventListener('touchstart', onFirstTouch);
-});
 
 /**
  * Creates the modal structure if it doesn't exist
@@ -126,32 +117,6 @@ function updateModalImage() {
 }
 
 /**
- * Handle portfolio item interactions for both desktop and mobile
- * @param {HTMLElement} item - The portfolio item element
- * @param {string} portfolioName - The name of the portfolio
- */
-function handlePortfolioInteraction(item, portfolioName) {
-    if (!isTouch) {
-        // Desktop behavior - direct navigation
-        showSinglePortfolio(portfolioName);
-        return;
-    }
-
-    // Mobile behavior
-    if (activePortfolioItem === item) {
-        // Second tap on same item - navigate
-        showSinglePortfolio(portfolioName);
-    } else {
-        // First tap or tap on different item
-        if (activePortfolioItem) {
-            activePortfolioItem.classList.remove('active');
-        }
-        item.classList.add('active');
-        activePortfolioItem = item;
-    }
-}
-
-/**
  * Fetch list of portfolios from /api/portfolios
  * Display them in a grid (cover + folder name)
  */
@@ -166,9 +131,6 @@ function showPortfolioList() {
             const app = document.getElementById("app");
             // Clear the container and add clickable title
             app.innerHTML = `<h1 class="site-title" style="cursor: pointer;">PICSORPIX</h1>`;
-
-            // Reset active portfolio item when showing list
-            activePortfolioItem = null;
 
             // Add click event to title
             const title = app.querySelector('.site-title');
@@ -192,21 +154,12 @@ function showPortfolioList() {
                     item.querySelector("h2").style.backgroundColor = `rgba(${color.r}, ${color.g}, ${color.b}, 0.7)`;
                 });
 
-                // Desktop/mobile click (handles 2-tap logic on mobile)
-                item.addEventListener("click", (e) => {
-                    e.preventDefault();
-                    handlePortfolioInteraction(item, p.name);
-                });
-
+                // On click -> load that portfolio's images
+                item.addEventListener("click", () => showSinglePortfolio(p.name));
                 grid.appendChild(item);
             });
 
             app.appendChild(grid);
-
-            // If it's a touch device, initialize our global scroll-based hover detection
-            if (isTouch) {
-                initGlobalTouchScroll();
-            }
         })
         .catch((err) => {
             console.error(err);
@@ -333,7 +286,7 @@ function showSinglePortfolio(folderName) {
                 // Add delay before showing
                 setTimeout(() => {
                     grid.style.opacity = "1"; // Show grid
-                }, TIME_OUT_LOADING_PORTFOLIO); // 800ms delay
+                }, 400); // 800ms delay
             });
 
             // Re-layout on window resize (with debouncing)
@@ -434,76 +387,4 @@ function layoutMasonry(container, colCount, gap) {
     // Adjust container height so it wraps all columns
     const maxHeight = Math.max(...colHeights);
     container.style.height = `${maxHeight}px`;
-}
-
-/**
- * Global method to detect scroll-based hover on mobile devices
- * without blocking normal page scrolling.
- */
-function initGlobalTouchScroll() {
-    // We'll track the finger movement to see if it exceeds this threshold
-    const MOVE_THRESHOLD = 10;
-    let startX = 0;
-    let startY = 0;
-    let hasMoved = false;
-
-    // We add the listener with { passive: false } so we can receive
-    // touchmove events even as the page scrolls. We do NOT call preventDefault().
-    document.addEventListener('touchstart', onTouchStart, { passive: false });
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-    document.addEventListener('touchend', onTouchEnd, { passive: false });
-
-    function onTouchStart(e) {
-        if (!e.touches || e.touches.length < 1) return;
-        hasMoved = false;
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-    }
-
-    function onTouchMove(e) {
-        if (!e.touches || e.touches.length < 1) return;
-        const diffX = Math.abs(e.touches[0].clientX - startX);
-        const diffY = Math.abs(e.touches[0].clientY - startY);
-
-        // If user moved finger more than threshold => we consider it scrolling
-        if (diffX > MOVE_THRESHOLD || diffY > MOVE_THRESHOLD) {
-            hasMoved = true;
-
-            // Which element is under the finger?
-            const touch = e.touches[0];
-            const el = document.elementFromPoint(touch.clientX, touch.clientY);
-
-            // If it's a .portfolio-item or a child of it, we find that .portfolio-item
-            const portfolioItem = findParentPortfolioItem(el);
-            if (portfolioItem) {
-                // Deactivate the previous item
-                if (activePortfolioItem && activePortfolioItem !== portfolioItem) {
-                    activePortfolioItem.classList.remove('active');
-                }
-                // Activate the new one if it's not already active
-                if (portfolioItem !== activePortfolioItem) {
-                    portfolioItem.classList.add('active');
-                    activePortfolioItem = portfolioItem;
-                }
-            }
-        }
-    }
-
-    function onTouchEnd(e) {
-        // If we never moved beyond threshold, it's a tap; existing "click" handlers handle it.
-        // If we scrolled, we already updated hover in onTouchMove().
-        // Nothing else to do here.
-    }
-
-    // Utility: climb the DOM to find .portfolio-item
-    function findParentPortfolioItem(node) {
-        let current = node;
-        while (current && current !== document.body) {
-            if (current.classList && current.classList.contains('portfolio-item')) {
-                return current;
-            }
-            current = current.parentNode;
-        }
-        return null;
-    }
 }

@@ -36,7 +36,6 @@ body {
     position: relative;
     overflow: hidden;
     aspect-ratio: 3 / 4;
-    -webkit-tap-highlight-color: transparent;
 }
 
 .portfolio-item img {
@@ -47,24 +46,8 @@ body {
     z-index: 1;
 }
 
-/* Desktop hover effects */
-@media (hover: hover) {
-    .portfolio-item:hover img {
-        transform: scale(1.1);
-    }
-
-    .portfolio-item:hover h2 {
-        opacity: 1;
-    }
-}
-
-/* Mobile active state */
-.portfolio-item.active img {
+.portfolio-item:hover img {
     transform: scale(1.1);
-}
-
-.portfolio-item.active h2 {
-    opacity: 1;
 }
 
 /* Overlay with the portfolio name */
@@ -84,6 +67,10 @@ body {
     transition: opacity 0.3s ease, background-color 0.3s ease;
     pointer-events: none;
     z-index: 2;
+}
+
+.portfolio-item:hover h2 {
+    opacity: 1;
 }
 
 /* Responsive breakpoints */
