@@ -1,6 +1,3 @@
-// Fix for iOS hover effects
-document.addEventListener("click", function() { });
-
 document.addEventListener("DOMContentLoaded", () => {
     showPortfolioList();
 });

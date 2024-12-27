@@ -43,11 +43,13 @@ body {
     height: 100%;
     object-fit: cover;
     transition: transform 0.3s ease;
+    -webkit-transition: transform 0.3s ease;
     z-index: 1;
 }
 
 .portfolio-item:hover img {
     transform: scale(1.1);
+    -webkit-transform: scale(1.1);
 }
 
 /* Overlay with the portfolio name */
@@ -65,12 +67,14 @@ body {
     padding: 0.5rem;
     opacity: 0;
     transition: opacity 0.3s ease, background-color 0.3s ease;
+    -webkit-transition: opacity 0.3s ease, background-color 0.3s ease;
     pointer-events: none;
     z-index: 2;
 }
 
 .portfolio-item:hover h2 {
     opacity: 1;
+    -webkit-opacity: 1;
 }
 
 /* Responsive breakpoints */
