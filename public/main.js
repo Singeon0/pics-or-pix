@@ -192,21 +192,21 @@ function showPortfolioList() {
                     item.querySelector("h2").style.backgroundColor = `rgba(${color.r}, ${color.g}, ${color.b}, 0.7)`;
                 });
 
-                // Handle desktop/mobile clicks
+                // Desktop/mobile click (handles 2-tap logic on mobile)
                 item.addEventListener("click", (e) => {
                     e.preventDefault();
                     handlePortfolioInteraction(item, p.name);
                 });
 
-                // Attach scroll-to-hover logic if on mobile
-                if (isTouch) {
-                    attachScrollHover(item);
-                }
-
                 grid.appendChild(item);
             });
 
             app.appendChild(grid);
+
+            // If it's a touch device, initialize our global scroll-based hover detection
+            if (isTouch) {
+                initGlobalTouchScroll();
+            }
         })
         .catch((err) => {
             console.error(err);
@@ -436,87 +436,74 @@ function layoutMasonry(container, colCount, gap) {
     container.style.height = `${maxHeight}px`;
 }
 
-/*
- * ========================================================================
- * New function: attachScrollHover(item)
- * ========================================================================
- * Called for each portfolio item on mobile (isTouch === true).
- * - On touchstart, we record the (x, y).
- * - If user moves > ~10px, we consider it scrolling.
- * - While scrolling, if the finger is actually over this item, we activate hover.
- * - The first item touched gets the hover by default if the touch started on it.
+/**
+ * Global method to detect scroll-based hover on mobile devices
+ * without blocking normal page scrolling.
  */
-function attachScrollHover(item) {
+function initGlobalTouchScroll() {
+    // We'll track the finger movement to see if it exceeds this threshold
+    const MOVE_THRESHOLD = 10;
     let startX = 0;
     let startY = 0;
     let hasMoved = false;
-    const MOVE_THRESHOLD = 10;
 
-    // Track if this item was the one the user initially touched
-    let isFingerInitiallyOnThisItem = false;
+    // We add the listener with { passive: false } so we can receive
+    // touchmove events even as the page scrolls. We do NOT call preventDefault().
+    document.addEventListener('touchstart', onTouchStart, { passive: false });
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd, { passive: false });
 
-    item.addEventListener('touchstart', (e) => {
+    function onTouchStart(e) {
+        if (!e.touches || e.touches.length < 1) return;
         hasMoved = false;
-        const touch = e.touches[0];
-        startX = touch.clientX;
-        startY = touch.clientY;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+    }
 
-        // Check if the user’s finger started exactly on this item
-        const rect = item.getBoundingClientRect();
-        if (
-            touch.clientX >= rect.left &&
-            touch.clientX <= rect.right &&
-            touch.clientY >= rect.top &&
-            touch.clientY <= rect.bottom
-        ) {
-            isFingerInitiallyOnThisItem = true;
+    function onTouchMove(e) {
+        if (!e.touches || e.touches.length < 1) return;
+        const diffX = Math.abs(e.touches[0].clientX - startX);
+        const diffY = Math.abs(e.touches[0].clientY - startY);
 
-            // Immediately hover this item if we started on it
-            if (activePortfolioItem !== item) {
-                if (activePortfolioItem) {
-                    activePortfolioItem.classList.remove('active');
-                }
-                item.classList.add('active');
-                activePortfolioItem = item;
-            }
-        } else {
-            isFingerInitiallyOnThisItem = false;
-        }
-    });
-
-    item.addEventListener('touchmove', (e) => {
-        const touch = e.touches[0];
-        const diffX = Math.abs(touch.clientX - startX);
-        const diffY = Math.abs(touch.clientY - startY);
-
-        // If finger moved more than threshold => considered scrolling
+        // If user moved finger more than threshold => we consider it scrolling
         if (diffX > MOVE_THRESHOLD || diffY > MOVE_THRESHOLD) {
             hasMoved = true;
 
-            // Check if the finger is currently over this item
-            const rect = item.getBoundingClientRect();
-            if (
-                touch.clientX >= rect.left &&
-                touch.clientX <= rect.right &&
-                touch.clientY >= rect.top &&
-                touch.clientY <= rect.bottom
-            ) {
-                // If not already active, hover it
-                if (activePortfolioItem !== item) {
-                    if (activePortfolioItem) {
-                        activePortfolioItem.classList.remove('active');
-                    }
-                    item.classList.add('active');
-                    activePortfolioItem = item;
+            // Which element is under the finger?
+            const touch = e.touches[0];
+            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+
+            // If it's a .portfolio-item or a child of it, we find that .portfolio-item
+            const portfolioItem = findParentPortfolioItem(el);
+            if (portfolioItem) {
+                // Deactivate the previous item
+                if (activePortfolioItem && activePortfolioItem !== portfolioItem) {
+                    activePortfolioItem.classList.remove('active');
+                }
+                // Activate the new one if it's not already active
+                if (portfolioItem !== activePortfolioItem) {
+                    portfolioItem.classList.add('active');
+                    activePortfolioItem = portfolioItem;
                 }
             }
         }
-    });
+    }
 
-    item.addEventListener('touchend', () => {
-        // If the finger never moved (under threshold), it's a normal tap
-        // The existing "click" handler will handle the two-tap logic, so we do nothing else here.
-        // If the finger did move, we've already updated the hover states as needed.
-        // No extra logic is needed at 'touchend'.
-    });
+    function onTouchEnd(e) {
+        // If we never moved beyond threshold, it's a tap; existing "click" handlers handle it.
+        // If we scrolled, we already updated hover in onTouchMove().
+        // Nothing else to do here.
+    }
+
+    // Utility: climb the DOM to find .portfolio-item
+    function findParentPortfolioItem(node) {
+        let current = node;
+        while (current && current !== document.body) {
+            if (current.classList && current.classList.contains('portfolio-item')) {
+                return current;
+            }
+            current = current.parentNode;
+        }
+        return null;
+    }
 }
