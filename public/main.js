@@ -5,6 +5,15 @@ document.addEventListener("DOMContentLoaded", () => {
 // Keep track of the current portfolio images and index
 let currentPortfolioImages = [];
 let currentImageIndex = 0;
+let activePortfolioItem = null;
+let isTouch = false;
+const TIME_OUT_LOADING_PORTFOLIO = 5;
+
+// Detect touch device
+window.addEventListener('touchstart', function onFirstTouch() {
+    isTouch = true;
+    window.removeEventListener('touchstart', onFirstTouch);
+});
 
 /**
  * Creates the modal structure if it doesn't exist
@@ -117,6 +126,34 @@ function updateModalImage() {
 }
 
 /**
+ * Handle portfolio item interactions for both desktop and mobile
+ * @param {HTMLElement} item - The portfolio item element
+ * @param {string} portfolioName - The name of the portfolio
+ */
+function handlePortfolioInteraction(item, portfolioName) {
+    if (!isTouch) {
+        // Desktop behavior - direct navigation
+        showSinglePortfolio(portfolioName);
+        return;
+    }
+
+    // Mobile behavior
+    if (activePortfolioItem === item) {
+        // Second tap on same item - navigate
+        showSinglePortfolio(portfolioName);
+    } else {
+        // First tap or tap on different item
+        // Remove active state from previous item
+        if (activePortfolioItem) {
+            activePortfolioItem.classList.remove('active');
+        }
+        // Activate new item
+        item.classList.add('active');
+        activePortfolioItem = item;
+    }
+}
+
+/**
  * Fetch list of portfolios from /api/portfolios
  * Display them in a grid (cover + folder name)
  */
@@ -131,6 +168,9 @@ function showPortfolioList() {
             const app = document.getElementById("app");
             // Clear the container and add clickable title
             app.innerHTML = `<h1 class="site-title" style="cursor: pointer;">PICSORPIX</h1>`;
+
+            // Reset active portfolio item when showing list
+            activePortfolioItem = null;
 
             // Add click event to title
             const title = app.querySelector('.site-title');
@@ -154,8 +194,12 @@ function showPortfolioList() {
                     item.querySelector("h2").style.backgroundColor = `rgba(${color.r}, ${color.g}, ${color.b}, 0.7)`;
                 });
 
-                // On click -> load that portfolio's images
-                item.addEventListener("click", () => showSinglePortfolio(p.name));
+                // Handle interactions
+                item.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    handlePortfolioInteraction(item, p.name);
+                });
+
                 grid.appendChild(item);
             });
 
@@ -286,7 +330,7 @@ function showSinglePortfolio(folderName) {
                 // Add delay before showing
                 setTimeout(() => {
                     grid.style.opacity = "1"; // Show grid
-                }, 400); // 800ms delay
+                }, TIME_OUT_LOADING_PORTFOLIO); // 800ms delay
             });
 
             // Re-layout on window resize (with debouncing)
