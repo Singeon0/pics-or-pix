@@ -1,19 +1,234 @@
-document.addEventListener("DOMContentLoaded", () => {
-    showPortfolioList();
-});
+/*************************************************
+ *  GLOBAL VARIABLES & CONFIG
+ *************************************************/
 
-// Keep track of the current portfolio images and index
+// -- Timing & Animation
+const DELAY_BEFORE_SHOWING_PORTFOLIO = 5; // Delay (ms) before showing the portfolio grid
+const MOVE_THRESHOLD = 10;                  // Finger-move threshold for touch scrolling
+
+// -- Masonry Layout
+const MASONRY_COLUMN_GAP = 12;             // Gap (in px) between items in the masonry grid
+
+// -- State Management
 let currentPortfolioImages = [];
 let currentImageIndex = 0;
 let activePortfolioItem = null;
 let isTouch = false;
-const TIME_OUT_LOADING_PORTFOLIO = 5;
+
+/*************************************************
+ *  EVENT LISTENERS & INIT
+ *************************************************/
+
+document.addEventListener("DOMContentLoaded", () => {
+    showPortfolioList();
+});
 
 // Detect touch device
 window.addEventListener('touchstart', function onFirstTouch() {
     isTouch = true;
     window.removeEventListener('touchstart', onFirstTouch);
 });
+
+/*************************************************
+ *  HOME PAGE FUNCTIONS
+ *************************************************/
+
+/**
+ * Fetch list of portfolios from /api/portfolios
+ * Display them in a grid (cover + folder name)
+ */
+function showPortfolioList() {
+    // Reset any special styling when showing the portfolio list
+    document.body.style.backgroundColor = '';
+    document.body.style.color = '';
+
+    fetch("/api/portfolios")
+        .then((res) => res.json())
+        .then((portfolios) => {
+            const app = document.getElementById("app");
+            // Clear the container and add clickable title
+            app.innerHTML = `<h1 class="site-title" style="cursor: pointer;">PICSORPIX</h1>`;
+
+            // Reset active portfolio item when showing list
+            activePortfolioItem = null;
+
+            // Add click event to title
+            const title = app.querySelector('.site-title');
+            title.addEventListener('click', () => showPortfolioList());
+
+            // Create a grid container
+            const grid = document.createElement("div");
+            grid.className = "portfolio-grid";
+
+            portfolios.forEach((p) => {
+                const item = document.createElement("div");
+                item.className = "portfolio-item";
+                item.innerHTML = `
+                    <img src="${p.cover}" alt="${p.name}" />
+                    <h2>
+                        ${p.name}
+                        <span class="click-text">click to open</span>
+                    </h2>
+                `;
+
+                // Dynamically set overlay color based on image's dominant color
+                const img = item.querySelector("img");
+                img.addEventListener("load", () => {
+                    const color = getDominantColor(img);
+                    item.querySelector("h2").style.backgroundColor =
+                        `rgba(${color.r}, ${color.g}, ${color.b}, 0.7)`;
+                });
+
+                // Desktop/mobile click (handles 2-tap logic on mobile)
+                item.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    handlePortfolioInteraction(item, p.name);
+                });
+
+                grid.appendChild(item);
+            });
+
+            app.appendChild(grid);
+
+            // If it's a touch device, initialize our global scroll-based hover detection
+            if (isTouch) {
+                initGlobalTouchScroll();
+            }
+        })
+        .catch((err) => {
+            console.error(err);
+        });
+}
+
+/**
+ * Handle portfolio item interactions for both desktop and mobile
+ * @param {HTMLElement} item - The portfolio item element
+ * @param {string} portfolioName - The name of the portfolio
+ */
+function handlePortfolioInteraction(item, portfolioName) {
+    if (!isTouch) {
+        // Desktop behavior - direct navigation
+        showSinglePortfolio(portfolioName);
+        return;
+    }
+
+    // Mobile behavior
+    if (activePortfolioItem === item) {
+        // Second tap on same item - navigate
+        showSinglePortfolio(portfolioName);
+    } else {
+        // First tap or tap on different item
+        if (activePortfolioItem) {
+            activePortfolioItem.classList.remove('active');
+        }
+        item.classList.add('active');
+        activePortfolioItem = item;
+    }
+}
+
+/*************************************************
+ *  PORTFOLIO DISPLAY FUNCTIONS
+ *************************************************/
+
+/**
+ * Fetch images for a single portfolio (folder)
+ * Display them in a masonry grid with a delay
+ */
+function showSinglePortfolio(folderName) {
+    // Apply special styling for Urbex portfolio
+    if (folderName.toLowerCase() === 'urbex') {
+        document.body.style.backgroundColor = 'black';
+        document.body.style.color = 'red';
+    } else {
+        // Reset styling for other portfolios
+        document.body.style.backgroundColor = '';
+        document.body.style.color = '';
+    }
+
+    fetch(`/api/portfolios/${folderName}`)
+        .then((res) => res.json())
+        .then((data) => {
+            const app = document.getElementById("app");
+            // Clear and build UI
+            app.innerHTML = "";
+
+            const siteTitle = document.createElement("h1");
+            siteTitle.textContent = "PICSORPIX";
+            siteTitle.className = "site-title";
+            siteTitle.style.cursor = "pointer";
+            siteTitle.addEventListener("click", showPortfolioList);
+            app.appendChild(siteTitle);
+
+            const grid = document.createElement("div");
+            grid.className = "photo-grid";
+            grid.style.position = "relative"; // for absolute positioning in masonry
+            grid.style.opacity = "0"; // Start hidden
+            grid.style.transition = "opacity 0.5s ease-in-out";
+
+            // Shuffle the images array before creating elements
+            const shuffledImages = shuffleArray([...data.images]);
+
+            // Store the current portfolio images for modal navigation
+            currentPortfolioImages = shuffledImages;
+
+            // Create images
+            shuffledImages.forEach((imgSrc, index) => {
+                const imgContainer = createImage(imgSrc, index);
+                grid.appendChild(imgContainer);
+            });
+
+            app.appendChild(grid);
+
+            // Create modal (but don't show it yet)
+            createModal();
+
+            // Wait for all images to load, then apply masonry layout with delay
+            const allImages = Array.from(grid.querySelectorAll("img"));
+            waitForImagesToLoad(allImages).then(() => {
+                // First apply the masonry layout
+                layoutMasonry(grid, getColumnCount(), MASONRY_COLUMN_GAP);
+
+                // Add delay before showing the grid
+                setTimeout(() => {
+                    grid.style.opacity = "1"; // Show grid
+                }, DELAY_BEFORE_SHOWING_PORTFOLIO);
+            });
+
+            // Re-layout on window resize (with debouncing)
+            let resizeTimeout;
+            window.addEventListener("resize", () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    layoutMasonry(grid, getColumnCount(), MASONRY_COLUMN_GAP);
+                }, 200);
+            });
+        })
+        .catch((err) => console.error(err));
+}
+
+/**
+ * Creates an image element
+ * @param {string} imgSrc - The source URL of the image
+ * @param {number} index - The index of the image in the portfolio
+ * @returns {HTMLElement}
+ */
+function createImage(imgSrc, index) {
+    const imgContainer = document.createElement("div");
+    imgContainer.className = "image-container";
+
+    const img = document.createElement("img");
+    img.src = imgSrc;
+
+    // Add click event for modal
+    imgContainer.addEventListener('click', () => openModal(imgSrc, index));
+
+    imgContainer.appendChild(img);
+    return imgContainer;
+}
+
+/*************************************************
+ *  MODAL FUNCTIONS
+ *************************************************/
 
 /**
  * Creates the modal structure if it doesn't exist
@@ -106,7 +321,9 @@ function showNextImage() {
  * Shows the previous image in the portfolio
  */
 function showPreviousImage() {
-    currentImageIndex = (currentImageIndex - 1 + currentPortfolioImages.length) % currentPortfolioImages.length;
+    currentImageIndex =
+        (currentImageIndex - 1 + currentPortfolioImages.length) %
+        currentPortfolioImages.length;
     updateModalImage();
 }
 
@@ -125,93 +342,9 @@ function updateModalImage() {
     }, 300);
 }
 
-/**
- * Handle portfolio item interactions for both desktop and mobile
- * @param {HTMLElement} item - The portfolio item element
- * @param {string} portfolioName - The name of the portfolio
- */
-function handlePortfolioInteraction(item, portfolioName) {
-    if (!isTouch) {
-        // Desktop behavior - direct navigation
-        showSinglePortfolio(portfolioName);
-        return;
-    }
-
-    // Mobile behavior
-    if (activePortfolioItem === item) {
-        // Second tap on same item - navigate
-        showSinglePortfolio(portfolioName);
-    } else {
-        // First tap or tap on different item
-        if (activePortfolioItem) {
-            activePortfolioItem.classList.remove('active');
-        }
-        item.classList.add('active');
-        activePortfolioItem = item;
-    }
-}
-
-/**
- * Fetch list of portfolios from /api/portfolios
- * Display them in a grid (cover + folder name)
- */
-function showPortfolioList() {
-    // Reset any special styling when showing the portfolio list
-    document.body.style.backgroundColor = '';
-    document.body.style.color = '';
-
-    fetch("/api/portfolios")
-        .then((res) => res.json())
-        .then((portfolios) => {
-            const app = document.getElementById("app");
-            // Clear the container and add clickable title
-            app.innerHTML = `<h1 class="site-title" style="cursor: pointer;">PICSORPIX</h1>`;
-
-            // Reset active portfolio item when showing list
-            activePortfolioItem = null;
-
-            // Add click event to title
-            const title = app.querySelector('.site-title');
-            title.addEventListener('click', () => showPortfolioList());
-
-            // Create a grid container
-            const grid = document.createElement("div");
-            grid.className = "portfolio-grid";
-
-            portfolios.forEach((p) => {
-                const item = document.createElement("div");
-                item.className = "portfolio-item";
-                item.innerHTML = `
-                    <img src="${p.cover}" alt="${p.name}" />
-                    <h2>${p.name}</h2>
-                `;
-                // Dynamically set overlay color based on image's dominant color
-                const img = item.querySelector("img");
-                img.addEventListener("load", () => {
-                    const color = getDominantColor(img);
-                    item.querySelector("h2").style.backgroundColor = `rgba(${color.r}, ${color.g}, ${color.b}, 0.7)`;
-                });
-
-                // Desktop/mobile click (handles 2-tap logic on mobile)
-                item.addEventListener("click", (e) => {
-                    e.preventDefault();
-                    handlePortfolioInteraction(item, p.name);
-                });
-
-                grid.appendChild(item);
-            });
-
-            app.appendChild(grid);
-
-            // If it's a touch device, initialize our global scroll-based hover detection
-            if (isTouch) {
-                initGlobalTouchScroll();
-            }
-        })
-        .catch((err) => {
-            console.error(err);
-        });
-}
+/*************************************************
+ *  UTILITY FUNCTIONS (Color, Shuffle, etc.)
+ *************************************************/
 
 /**
  * Shuffle array using Fisher-Yates algorithm
@@ -250,102 +383,11 @@ function getDominantColor(img) {
         count++;
     }
 
-    return { r: Math.floor(r / count), g: Math.floor(g / count), b: Math.floor(b / count) };
-}
-
-/**
- * Creates an image element
- * @param {string} imgSrc - The source URL of the image
- * @param {number} index - The index of the image in the portfolio
- * @returns {HTMLElement}
- */
-function createImage(imgSrc, index) {
-    const imgContainer = document.createElement("div");
-    imgContainer.className = "image-container";
-
-    const img = document.createElement("img");
-    img.src = imgSrc;
-
-    // Add click event for modal
-    imgContainer.addEventListener('click', () => openModal(imgSrc, index));
-
-    imgContainer.appendChild(img);
-    return imgContainer;
-}
-
-/**
- * Fetch images for a single portfolio (folder)
- * Display them in a masonry grid with a delay
- */
-function showSinglePortfolio(folderName) {
-    // Apply special styling for Urbex portfolio
-    if (folderName.toLowerCase() === 'urbex') {
-        document.body.style.backgroundColor = 'black';
-        document.body.style.color = 'red';
-    } else {
-        // Reset styling for other portfolios
-        document.body.style.backgroundColor = '';
-        document.body.style.color = '';
-    }
-
-    fetch(`/api/portfolios/${folderName}`)
-        .then((res) => res.json())
-        .then((data) => {
-            const app = document.getElementById("app");
-            // Clear and build UI
-            app.innerHTML = "";
-
-            const siteTitle = document.createElement("h1");
-            siteTitle.textContent = "PICSORPIX";
-            siteTitle.className = "site-title";
-            siteTitle.style.cursor = "pointer";
-            siteTitle.addEventListener("click", showPortfolioList);
-            app.appendChild(siteTitle);
-
-            const grid = document.createElement("div");
-            grid.className = "photo-grid";
-            grid.style.position = "relative"; // for absolute positioning in masonry
-            grid.style.opacity = "0"; // Start hidden
-            grid.style.transition = "opacity 0.5s ease-in-out";
-
-            // Shuffle the images array before creating elements
-            const shuffledImages = shuffleArray([...data.images]);
-            // Store the current portfolio images for modal navigation
-            currentPortfolioImages = shuffledImages;
-
-            // Create images
-            shuffledImages.forEach((imgSrc, index) => {
-                const imgContainer = createImage(imgSrc, index);
-                grid.appendChild(imgContainer);
-            });
-
-            app.appendChild(grid);
-
-            // Create modal (but don't show it yet)
-            createModal();
-
-            // Wait for all images to load, then apply masonry layout with delay
-            const allImages = Array.from(grid.querySelectorAll("img"));
-            waitForImagesToLoad(allImages).then(() => {
-                // First apply the masonry layout
-                layoutMasonry(grid, getColumnCount(), 12);
-
-                // Add delay before showing
-                setTimeout(() => {
-                    grid.style.opacity = "1"; // Show grid
-                }, TIME_OUT_LOADING_PORTFOLIO); // 800ms delay
-            });
-
-            // Re-layout on window resize (with debouncing)
-            let resizeTimeout;
-            window.addEventListener("resize", () => {
-                clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(() => {
-                    layoutMasonry(grid, getColumnCount(), 12);
-                }, 200);
-            });
-        })
-        .catch((err) => console.error(err));
+    return {
+        r: Math.floor(r / count),
+        g: Math.floor(g / count),
+        b: Math.floor(b / count)
+    };
 }
 
 /**
@@ -365,6 +407,10 @@ function waitForImagesToLoad(images) {
         });
     }));
 }
+
+/*************************************************
+ *  MASONRY LAYOUT FUNCTIONS
+ *************************************************/
 
 /**
  * Determines how many columns should be used based on screen width.
@@ -436,13 +482,15 @@ function layoutMasonry(container, colCount, gap) {
     container.style.height = `${maxHeight}px`;
 }
 
+/*************************************************
+ *  GLOBAL TOUCH SCROLL (MOBILE HOVER)
+ *************************************************/
+
 /**
  * Global method to detect scroll-based hover on mobile devices
  * without blocking normal page scrolling.
  */
 function initGlobalTouchScroll() {
-    // We'll track the finger movement to see if it exceeds this threshold
-    const MOVE_THRESHOLD = 10;
     let startX = 0;
     let startY = 0;
     let hasMoved = false;
