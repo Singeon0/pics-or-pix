@@ -25,6 +25,10 @@ document.addEventListener("DOMContentLoaded", () => {
  * Fetch list of portfolios from /api/portfolios
  * Display them in a grid (cover + folder name)
  */
+/**
+ * Fetch list of portfolios from /api/portfolios
+ * Display them in a grid (cover + folder name)
+ */
 function showPortfolioList() {
     // Reset any special styling when showing the portfolio list
     document.body.style.backgroundColor = '';
@@ -52,12 +56,13 @@ function showPortfolioList() {
                     </h2>
                 `;
 
-                // Dynamically set overlay color based on image's dominant color
+                // Show temporary overlay after image loads
                 const img = item.querySelector("img");
                 img.addEventListener("load", () => {
                     const color = getDominantColor(img);
                     item.querySelector("h2").style.backgroundColor =
                         `rgba(${color.r}, ${color.g}, ${color.b}, 0.7)`;
+                    showTemporaryOverlay(item);
                 });
 
                 // Click to open portfolio
@@ -78,6 +83,39 @@ function showPortfolioList() {
         .catch((err) => {
             console.error(err);
         });
+}
+
+/**
+ * Shows temporary overlay on mobile devices
+ * @param {HTMLElement} item - The portfolio item element
+ */
+function showTemporaryOverlay(item) {
+    // Only show on mobile/touch devices
+    if (window.matchMedia('(hover: none)').matches) {
+        // Create temporary overlay
+        const tempOverlay = document.createElement('div');
+        tempOverlay.className = 'temporary-overlay';
+        tempOverlay.innerHTML = `
+            <h2>Tap to open</h2>
+        `;
+
+        // Add overlay to item
+        item.appendChild(tempOverlay);
+
+        // Show overlay with a slight delay
+        setTimeout(() => {
+            tempOverlay.classList.add('show');
+
+            // Hide and remove overlay after 2 seconds
+            setTimeout(() => {
+                tempOverlay.classList.remove('show');
+                // Remove from DOM after fade out animation
+                setTimeout(() => {
+                    tempOverlay.remove();
+                }, 500); // Match the CSS transition time
+            }, 2000);
+        }, 100);
+    }
 }
 
 /**
