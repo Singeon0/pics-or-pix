@@ -104,7 +104,17 @@ function handlePortfolioInteraction(item, portfolioName) {
  * Fetch images for a single portfolio (folder)
  * Display them in a grid with lazy loading
  */
+/**
+ * Fetch images for a single portfolio (folder)
+ * Display them in a grid with lazy loading
+ */
 function showSinglePortfolio(folderName) {
+    // Scroll to top immediately when function is called
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+
     // Apply special styling for Urbex portfolio
     if (folderName.toLowerCase() === 'urbex') {
         document.body.style.backgroundColor = 'black';
