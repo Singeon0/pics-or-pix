@@ -4,10 +4,14 @@
 
 // -- Timing & Animation
 const DELAY_BEFORE_SHOWING_PORTFOLIO = 5; // Delay (ms) before showing the portfolio grid
+const DOUBLE_TAP_TIMEOUT = 2000; // 2 seconds timeout for double tap
+const OVERLAY_FADE_DURATION = 150; // 150ms for overlay fade
 
 // -- State Management
 let currentPortfolioImages = [];
 let currentImageIndex = 0;
+let lastTapTime = 0; // Track last tap time
+let doubleTapTimer = null; // Timer for double tap timeout
 
 /*************************************************
  *  EVENT LISTENERS & INIT
@@ -92,12 +96,23 @@ function showPortfolioList() {
 function showTemporaryOverlay(item) {
     // Only show on mobile/touch devices
     if (window.matchMedia('(hover: none)').matches) {
+        // Get the portfolio name and overlay background from the existing h2
+        const existingH2 = item.querySelector('h2');
+        const portfolioName = existingH2.childNodes[0].textContent.trim();
+        const overlayBackground = existingH2.style.backgroundColor;
+
         // Create temporary overlay
         const tempOverlay = document.createElement('div');
         tempOverlay.className = 'temporary-overlay';
         tempOverlay.innerHTML = `
-            <h2>Tap to open</h2>
+            <h2>
+                ${portfolioName}
+                <span class="click-text">click to open</span>
+            </h2>
         `;
+
+        // Apply the same background color as the hover effect
+        tempOverlay.style.backgroundColor = overlayBackground;
 
         // Add overlay to item
         item.appendChild(tempOverlay);
@@ -124,7 +139,87 @@ function showTemporaryOverlay(item) {
  * @param {string} portfolioName - The name of the portfolio
  */
 function handlePortfolioInteraction(item, portfolioName) {
-    showSinglePortfolio(portfolioName);
+    // Check if we're on mobile/touch device
+    if (window.matchMedia('(hover: none)').matches) {
+        const now = Date.now();
+
+        // If there's a pending double tap timer
+        if (doubleTapTimer !== null) {
+            // Clear the timer
+            clearTimeout(doubleTapTimer);
+            doubleTapTimer = null;
+
+            // If second tap is within timeout period, open portfolio
+            if (now - lastTapTime < DOUBLE_TAP_TIMEOUT) {
+                showSinglePortfolio(portfolioName);
+                return;
+            }
+        }
+
+        // Update last tap time
+        lastTapTime = now;
+
+        // Show overlay
+        showTapOverlay(item);
+
+        // Set timer for tap timeout
+        doubleTapTimer = setTimeout(() => {
+            doubleTapTimer = null;
+        }, DOUBLE_TAP_TIMEOUT);
+    } else {
+        // On desktop, directly open the portfolio
+        showSinglePortfolio(portfolioName);
+    }
+}
+
+/**
+ * Shows overlay on tap for mobile devices
+ * @param {HTMLElement} item - The portfolio item element
+ */
+function showTapOverlay(item) {
+    // Only show on mobile/touch devices
+    if (window.matchMedia('(hover: none)').matches) {
+        // Remove any existing temporary overlay
+        const existingOverlay = item.querySelector('.temporary-overlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+
+        // Get the portfolio name and overlay background from the existing h2
+        const existingH2 = item.querySelector('h2');
+        const portfolioName = existingH2.childNodes[0].textContent.trim();
+        const overlayBackground = existingH2.style.backgroundColor;
+
+        // Create temporary overlay
+        const tempOverlay = document.createElement('div');
+        tempOverlay.className = 'temporary-overlay';
+        tempOverlay.innerHTML = `
+            <h2>
+                ${portfolioName}
+                <span class="click-text">click to open</span>
+            </h2>
+        `;
+
+        // Apply the same background color as the hover effect
+        tempOverlay.style.backgroundColor = overlayBackground;
+
+        // Add overlay to item
+        item.appendChild(tempOverlay);
+
+        // Show overlay immediately
+        requestAnimationFrame(() => {
+            tempOverlay.classList.add('show');
+
+            // Hide and remove overlay after timeout
+            setTimeout(() => {
+                tempOverlay.classList.remove('show');
+                // Remove from DOM after fade out animation
+                setTimeout(() => {
+                    tempOverlay.remove();
+                }, OVERLAY_FADE_DURATION); // Match the CSS transition time
+            }, DOUBLE_TAP_TIMEOUT);
+        });
+    }
 }
 
 /*************************************************
@@ -424,8 +519,8 @@ function initLazyLoading() {
             }
         });
     }, {
-        rootMargin: '50px 0px', // Start loading images 50px before they enter viewport
-        threshold: 0.1
+        rootMargin: '250px 0px', // Start loading images 50px before they enter viewport
+        threshold: 0.025
     });
 
     // Observe all lazy images
