@@ -6,12 +6,19 @@
 const DELAY_BEFORE_SHOWING_PORTFOLIO = 5; // Delay (ms) before showing the portfolio grid
 const DOUBLE_TAP_TIMEOUT = 2000; // 2 seconds timeout for double tap
 const OVERLAY_FADE_DURATION = 150; // 150ms for overlay fade
+const SWIPE_THRESHOLD = 50; // Minimum swipe distance to trigger navigation
+const SWIPE_TIMEOUT = 300;  // Maximum time (ms) for a swipe gesture
 
 // -- State Management
 let currentPortfolioImages = [];
 let currentImageIndex = 0;
 let lastTapTime = 0; // Track last tap time
 let doubleTapTimer = null; // Timer for double tap timeout
+let touchStartX = 0;
+let touchStartY = 0;
+let touchStartTime = 0;
+let isSwiping = false;
+
 
 /*************************************************
  *  EVENT LISTENERS & INIT
@@ -385,6 +392,9 @@ function createModal() {
 
         document.body.appendChild(modal);
     }
+    // Initialize touch events for mobile
+    initTouchEvents(modal);
+
     return modal;
 }
 
@@ -456,6 +466,88 @@ function updateModalImage() {
         modalImg.src = currentPortfolioImages[currentImageIndex];
         modalContent.classList.add('active');
     }, 300);
+}
+
+/**
+ * Initializes touch events for mobile swipe navigation
+ * @param {HTMLElement} modal - The modal element
+ */
+function initTouchEvents(modal) {
+    // Only initialize on touch devices
+    if (!window.matchMedia('(hover: none)').matches) return;
+
+    const modalContent = modal.querySelector('.modal-content');
+
+    modalContent.addEventListener('touchstart', handleTouchStart, { passive: false });
+    modalContent.addEventListener('touchmove', handleTouchMove, { passive: false });
+    modalContent.addEventListener('touchend', handleTouchEnd, { passive: false });
+}
+
+/**
+ * Handles the start of a touch event
+ * @param {TouchEvent} e - The touch event
+ */
+function handleTouchStart(e) {
+    // Ignore multi-touch gestures
+    if (e.touches.length > 1) return;
+
+    // Prevent default to stop scrolling
+    e.preventDefault();
+
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+    isSwiping = true;
+}
+
+/**
+ * Handles touch movement
+ * @param {TouchEvent} e - The touch event
+ */
+function handleTouchMove(e) {
+    if (!isSwiping || e.touches.length > 1) return;
+    e.preventDefault();
+}
+
+/**
+ * Handles the end of a touch event
+ * @param {TouchEvent} e - The touch event
+ */
+function handleTouchEnd(e) {
+    if (!isSwiping) return;
+
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const touchEndTime = Date.now();
+
+    // Calculate swipe distance and time
+    const swipeDistance = touchEndX - touchStartX;
+    const swipeTime = touchEndTime - touchStartTime;
+
+    // Calculate vertical movement
+    const verticalDistance = Math.abs(touchEndY - touchStartY);
+
+    // Reset swiping state
+    isSwiping = false;
+
+    // Ignore if:
+    // 1. Swipe took too long
+    // 2. Swipe was too short
+    // 3. More vertical than horizontal movement
+    if (swipeTime > SWIPE_TIMEOUT ||
+        Math.abs(swipeDistance) < SWIPE_THRESHOLD ||
+        verticalDistance > Math.abs(swipeDistance)) {
+        return;
+    }
+
+    // Determine swipe direction and navigate
+    if (swipeDistance > 0) {
+        // Swipe right -> Previous image
+        showPreviousImage();
+    } else {
+        // Swipe left -> Next image
+        showNextImage();
+    }
 }
 
 /*************************************************
