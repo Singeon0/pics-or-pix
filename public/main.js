@@ -630,8 +630,21 @@ function loadImage(img) {
     if (actualSrc) {
         img.src = actualSrc;
         img.addEventListener('load', () => {
+            // Add orientation class to parent container
+            const orientation = getImageOrientation(img);
+            img.parentElement.classList.add(orientation);
+
             img.classList.remove('lazy');
             img.removeAttribute('data-src');
         });
     }
+}
+
+/**
+ * Determines if an image is landscape or portrait
+ * @param {HTMLImageElement} img - The image element to check
+ * @returns {string} 'landscape' or 'portrait'
+ */
+function getImageOrientation(img) {
+    return img.naturalWidth >= img.naturalHeight ? 'landscape' : 'portrait';
 }

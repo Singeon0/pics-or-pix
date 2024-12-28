@@ -35,7 +35,7 @@ body {
     cursor: pointer;
     position: relative;
     overflow: hidden;
-    aspect-ratio: 3 / 4;
+    aspect-ratio: 2 / 3;
     -webkit-tap-highlight-color: transparent;
 }
 

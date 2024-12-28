@@ -14,9 +14,18 @@
 /* Each container for an image */
 .image-container {
     width: 100%;
-    aspect-ratio: 1;
     cursor: pointer;
     overflow: hidden;
+    position: relative;
+}
+
+/* Add orientation-specific aspect ratios */
+.image-container.landscape {
+    aspect-ratio: 3/2;
+}
+
+.image-container.portrait {
+    aspect-ratio: 2/3;
 }
 
 /*
