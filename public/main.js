@@ -256,7 +256,7 @@ function showSinglePortfolio(folderName) {
     });
 
     // Apply special styling for Urbex portfolio
-    if (folderName.toLowerCase() === 'urbex') {
+    if (folderName.toLowerCase() === 'urbex' || folderName.toLowerCase() === 'Moon') {
         document.body.style.backgroundColor = 'black';
         document.body.style.color = 'red';
     } else {
