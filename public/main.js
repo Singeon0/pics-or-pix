@@ -245,12 +245,12 @@ function showSinglePortfolio(folderName) {
         behavior: 'smooth'
     });
 
-    // Apply special styling for Urbex portfolio
+    // Apply special styling for specific portfolios only
     if (folderName.toLowerCase() === 'urbex' || folderName.toLowerCase() === 'moon') {
         document.body.style.backgroundColor = 'black';
         document.body.style.color = 'red';
     } else {
-        // Reset styling for other portfolios
+        // Reset styling for other portfolios (including Complete Collection)
         document.body.style.backgroundColor = '';
         document.body.style.color = '';
     }
@@ -266,7 +266,7 @@ function showSinglePortfolio(folderName) {
             const fixedHeader = document.createElement("div");
             fixedHeader.className = "fixed-header";
 
-            // Set the background color explicitly
+            // Set the background color based on portfolio
             if (folderName.toLowerCase() === 'urbex' || folderName.toLowerCase() === 'moon') {
                 fixedHeader.style.backgroundColor = 'black';
             } else {
