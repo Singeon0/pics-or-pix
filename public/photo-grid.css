@@ -1,6 +1,27 @@
 /*
    Simple grid styles for the images in a single portfolio.
 */
+
+/* Fixed header for single portfolio view */
+.fixed-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;  /* Increased z-index */
+    margin: 0;      /* Reset margin */
+    padding: 3rem 3rem 1rem 3rem;  /* Combined margins and padding from body */
+    transition: background-color 0.3s ease;
+    width: 100%;
+    /* Add a solid background that extends full width */
+    background-color: inherit;  /* This will be set by JavaScript to match body */
+}
+
+/* Adjust spacing when fixed header is present */
+.has-fixed-header {
+    padding-top: 7rem; /* Increased to account for header height + padding */
+}
+
 .photo-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -56,7 +77,7 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease, background-color 0.3s ease;
-    z-index: 1000;
+    z-index: 1001;  /* Ensure it's above the fixed header */
     background-color: rgba(0, 0, 0, 0); /* Start transparent */
 }
 
@@ -151,6 +172,15 @@
     }
 }
 
+@media (max-width: 900px) {
+    .fixed-header {
+        padding: 1.5rem 1.5rem 1rem 1.5rem;
+    }
+    .has-fixed-header {
+        padding-top: 5rem;
+    }
+}
+
 @media (max-width: 600px) {
     .photo-grid {
         grid-template-columns: 1fr;
@@ -165,6 +195,13 @@
     .modal-nav::before {
         width: 15px;
         height: 15px;
+    }
+
+    .fixed-header {
+        padding: 1rem 1rem 1rem 1rem;
+    }
+    .has-fixed-header {
+        padding-top: 4rem;
     }
 }
 

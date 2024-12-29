@@ -233,17 +233,7 @@ function showTapOverlay(item) {
  *  PORTFOLIO DISPLAY FUNCTIONS
  *************************************************/
 
-/**
- * Fetch images for a single portfolio (folder)
- */
-/**
- * Fetch images for a single portfolio (folder)
- * Display them in a grid
- */
-/**
- * Fetch images for a single portfolio (folder)
- * Display them in a grid with lazy loading
- */
+
 /**
  * Fetch images for a single portfolio (folder)
  * Display them in a grid with lazy loading
@@ -272,15 +262,28 @@ function showSinglePortfolio(folderName) {
             // Clear and build UI
             app.innerHTML = "";
 
+            // Create fixed header
+            const fixedHeader = document.createElement("div");
+            fixedHeader.className = "fixed-header";
+
+            // Set the background color explicitly
+            if (folderName.toLowerCase() === 'urbex' || folderName.toLowerCase() === 'moon') {
+                fixedHeader.style.backgroundColor = 'black';
+            } else {
+                fixedHeader.style.backgroundColor = 'white';
+            }
+
             const siteTitle = document.createElement("h1");
             siteTitle.textContent = "PICSORPIX";
             siteTitle.className = "site-title";
             siteTitle.style.cursor = "pointer";
             siteTitle.addEventListener("click", showPortfolioList);
-            app.appendChild(siteTitle);
+
+            fixedHeader.appendChild(siteTitle);
+            app.appendChild(fixedHeader);
 
             const grid = document.createElement("div");
-            grid.className = "photo-grid";
+            grid.className = "photo-grid has-fixed-header";
             grid.style.opacity = "0"; // Start hidden
             grid.style.transition = "opacity 0.5s ease-in-out";
 
