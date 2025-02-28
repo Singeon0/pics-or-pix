@@ -236,7 +236,7 @@ function showTapOverlay(item) {
 
 /**
  * Fetch images for a single portfolio (folder)
- * Display them in a grid with lazy loading
+ * Display them in a masonry layout with lazy loading
  */
 function showSinglePortfolio(folderName) {
     // Scroll to top immediately when function is called
@@ -293,26 +293,137 @@ function showSinglePortfolio(folderName) {
             // Store the current portfolio images for modal navigation
             currentPortfolioImages = shuffledImages;
 
-            // Create images with lazy loading
-            shuffledImages.forEach((imgSrc, index) => {
-                const imgContainer = createImage(imgSrc, index);
-                grid.appendChild(imgContainer);
-            });
-
             app.appendChild(grid);
 
-            // Create modal (but don't show it yet)
-            createModal();
+            // Set minimum height for grid initially to avoid layout jumps
+            grid.style.minHeight = "800px";
 
-            // Initialize lazy loading
-            initLazyLoading();
+            // Preload images to calculate their dimensions for masonry layout
+            const preloadPromises = shuffledImages.map((imgSrc, index) => {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // Once image is loaded, we know its dimensions
+                        resolve({
+                            src: imgSrc,
+                            index: index,
+                            width: img.naturalWidth,
+                            height: img.naturalHeight
+                        });
+                    };
+                    img.onerror = () => {
+                        // Resolve with default dimensions on error
+                        resolve({
+                            src: imgSrc,
+                            index: index,
+                            width: 800,
+                            height: 600
+                        });
+                    };
+                    img.src = imgSrc;
+                });
+            });
 
-            // Show grid after a short delay
-            setTimeout(() => {
-                grid.style.opacity = "1"; // Show grid
-            }, DELAY_BEFORE_SHOWING_PORTFOLIO);
+            // Once all images are preloaded with dimensions, create the masonry layout
+            Promise.all(preloadPromises).then(imagesWithDimensions => {
+                // Create masonry layout
+                renderMasonryLayout(grid, imagesWithDimensions);
+                
+                // Create modal (but don't show it yet)
+                createModal();
+
+                // Initialize lazy loading
+                initLazyLoading();
+
+                // Show grid after a short delay
+                setTimeout(() => {
+                    grid.style.opacity = "1"; // Show grid
+                    grid.style.minHeight = "auto"; // Remove minimum height
+                }, DELAY_BEFORE_SHOWING_PORTFOLIO);
+            });
         })
         .catch((err) => console.error(err));
+}
+
+/**
+ * Renders images in a masonry layout
+ * @param {HTMLElement} grid - The grid container element
+ * @param {Array} images - Array of image objects with dimensions
+ */
+function renderMasonryLayout(grid, images) {
+    // Define column width based on container width and desired column count
+    const gridWidth = grid.clientWidth;
+    
+    // Calculate columns based on screen width
+    let columnCount = 3; // Default for desktop
+    if (window.innerWidth <= 600) {
+        columnCount = 1;
+    } else if (window.innerWidth <= 1200) {
+        columnCount = 2;
+    }
+    
+    // Initialize column heights
+    const columnHeights = Array(columnCount).fill(0);
+    
+    // Create images and position them
+    images.forEach((imgData) => {
+        // Find the shortest column
+        const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
+        
+        // Create the image container
+        const imgContainer = createImage(imgData.src, imgData.index);
+        
+        // Calculate position based on shortest column
+        const columnWidth = gridWidth / columnCount;
+        const xPos = shortestColumnIndex * columnWidth;
+        const yPos = columnHeights[shortestColumnIndex];
+        
+        // Position the container absolutely
+        imgContainer.style.left = `${(shortestColumnIndex * 100) / columnCount}%`;
+        imgContainer.style.top = `${yPos}px`;
+        imgContainer.style.width = `calc(${100 / columnCount}% - 1rem)`;
+        
+        // Set initial height based on image aspect ratio
+        const aspectRatio = imgData.width / imgData.height;
+        const containerWidth = columnWidth - 16; // account for margin
+        const containerHeight = containerWidth / aspectRatio;
+        
+        // Update column height
+        columnHeights[shortestColumnIndex] += containerHeight + 16; // Add margin
+        
+        // Add to the grid
+        grid.appendChild(imgContainer);
+    });
+    
+    // Set grid height to tallest column
+    grid.style.height = `${Math.max(...columnHeights)}px`;
+    
+    // Add window resize listener to reflow the layout
+    window.addEventListener('resize', debounce(() => {
+        // Clear the grid
+        grid.innerHTML = '';
+        
+        // Reset grid height
+        grid.style.height = 'auto';
+        
+        // Re-render the masonry layout
+        renderMasonryLayout(grid, images);
+    }, 200));
+}
+
+/**
+ * Simple debounce function to avoid excessive resize calculations
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function() {
+        const context = this;
+        const args = arguments;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            func.apply(context, args);
+        }, wait);
+    };
 }
 
 /**
@@ -331,15 +442,19 @@ function showSinglePortfolio(folderName) {
 function createImage(imgSrc, index) {
     const imgContainer = document.createElement("div");
     imgContainer.className = "image-container";
-
+    
+    // For Masonry layout, preload image dimensions to avoid layout shifts
+    const tempImg = new Image();
+    tempImg.src = imgSrc;
+    
     const img = document.createElement("img");
-    // Set a placeholder image or leave src empty
+    // Set a placeholder image 
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
     // Store the actual image URL in data-src
     img.dataset.src = imgSrc;
     img.alt = `Portfolio image ${index + 1}`;
     img.className = 'lazy';
-
+    
     // Add click event for modal
     imgContainer.addEventListener('click', () => {
         // Ensure image is loaded before opening modal
@@ -623,6 +738,8 @@ function initLazyLoading() {
         imageObserver.observe(img);
     });
 }
+// Expose for testing
+window.initLazyLoading = initLazyLoading;
 
 /**
  * Loads the actual image
@@ -642,6 +759,8 @@ function loadImage(img) {
         });
     }
 }
+// Expose for testing
+window.loadImage = loadImage;
 
 /**
  * Determines if an image is landscape or portrait

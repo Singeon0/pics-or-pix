@@ -1,5 +1,5 @@
 /*
-   Simple grid styles for the images in a single portfolio.
+   Masonry grid styles for the images in a single portfolio.
 */
 
 /* Fixed header for single portfolio view */
@@ -8,54 +8,50 @@
     top: 0;
     left: 0;
     right: 0;
-    z-index: 1000;  /* Increased z-index */
-    margin: 0;      /* Reset margin */
-    padding: 3rem 3rem 1rem 3rem;  /* Combined margins and padding from body */
+    z-index: 1000;
+    margin: 0;
+    padding: 3rem 3rem 1rem 3rem;
     transition: background-color 0.3s ease;
     width: 100%;
-    /* Add a solid background that extends full width */
-    background-color: inherit;  /* This will be set by JavaScript to match body */
+    background-color: inherit;
 }
 
 /* Adjust spacing when fixed header is present */
 .has-fixed-header {
-    padding-top: 7rem; /* Increased to account for header height + padding */
+    padding-top: 7rem;
 }
 
+/* Masonry layout container */
 .photo-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    position: relative;
     width: 100%;
     max-width: 1800px;
-    margin: 1rem auto;
-    padding: 0 0.5rem;
+    margin: 0 auto;
+    padding: 0 1rem;
 }
 
-/* Each container for an image */
+/* Image container styles */
 .image-container {
-    width: 100%;
+    position: absolute; /* Positioned absolutely for masonry */
+    width: calc(33.333% - 1rem); /* Default 3 columns with gap */
+    margin-bottom: 1rem;
     cursor: pointer;
     overflow: hidden;
-    position: relative;
+    transition: transform 0.3s ease;
+    will-change: transform; /* Optimize for transforms */
+    transform: translateZ(0); /* Hardware acceleration */
 }
 
-/* Add orientation-specific aspect ratios */
-.image-container.landscape {
-    aspect-ratio: 3/2;
+.image-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
-.image-container.portrait {
-    aspect-ratio: 2/3;
-}
-
-/*
-   The images themselves should keep their aspect ratio
-*/
+/* The images themselves */
 .photo-grid img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
+    display: block;
     transition: transform 0.3s ease;
 }
 
@@ -63,8 +59,7 @@
     transform: scale(1.05);
 }
 
-/* Modal styles remain unchanged */
-/* Modal overlay */
+/* Modal styles */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -77,14 +72,14 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease, background-color 0.3s ease;
-    z-index: 1001;  /* Ensure it's above the fixed header */
-    background-color: rgba(0, 0, 0, 0); /* Start transparent */
+    z-index: 1001;
+    background-color: rgba(0, 0, 0, 0);
 }
 
 .modal-overlay.active {
     opacity: 1;
     pointer-events: all;
-    background-color: rgba(0, 0, 0, 0.9); /* Dark semi-transparent background when active */
+    background-color: rgba(0, 0, 0, 0.9);
 }
 
 .modal-content {
@@ -116,7 +111,7 @@
     transform: translateY(-50%);
     background: none;
     border: none;
-    color: #333;
+    color: #fff;
     font-size: 2rem;
     cursor: pointer;
     padding: 1rem;
@@ -143,8 +138,8 @@
     top: 50%;
     width: 20px;
     height: 20px;
-    border-top: 2px solid #333;
-    border-right: 2px solid #333;
+    border-top: 2px solid #fff;
+    border-right: 2px solid #fff;
 }
 
 .modal-nav.prev::before {
@@ -165,10 +160,20 @@
     margin-bottom: 1rem;
 }
 
+/* Lazy loading styles */
+.photo-grid img.lazy {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.photo-grid img:not(.lazy) {
+    opacity: 1;
+}
+
 /* Responsive breakpoints */
 @media (max-width: 1200px) {
-    .photo-grid {
-        grid-template-columns: repeat(2, 1fr);
+    .image-container {
+        width: calc(50% - 1rem); /* 2 columns on medium screens */
     }
 }
 
@@ -182,11 +187,10 @@
 }
 
 @media (max-width: 600px) {
-    .photo-grid {
-        grid-template-columns: 1fr;
-        padding: 0 0.25rem;
+    .image-container {
+        width: 100%; /* 1 column on small screens */
     }
-
+    
     .modal-nav {
         font-size: 1.5rem;
         padding: 0.5rem;
@@ -198,18 +202,14 @@
     }
 
     .fixed-header {
-        padding: 1rem 1rem 1rem 1rem;
+        padding: 1rem;
     }
+    
     .has-fixed-header {
         padding-top: 4rem;
     }
-}
-
-.photo-grid img.lazy {
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out;
-}
-
-.photo-grid img:not(.lazy) {
-    opacity: 1;
+    
+    .photo-grid {
+        padding: 0 0.5rem;
+    }
 }
