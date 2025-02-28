@@ -25,6 +25,19 @@ let isSwiping = false;
  *************************************************/
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Register service worker for caching and offline support
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                })
+                .catch(err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+        });
+    }
+    
     showPortfolioList();
 });
 
@@ -38,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
  */
 /**
  * Fetch list of portfolios from /api/portfolios
- * Display them in a grid (cover + folder name)
+ * Display them in a grid (cover + folder name) with optimized images
  */
 function showPortfolioList() {
     // Reset any special styling when showing the portfolio list
@@ -59,8 +72,28 @@ function showPortfolioList() {
             portfolios.forEach((p) => {
                 const item = document.createElement("div");
                 item.className = "portfolio-item";
+                
+                // Create image with placeholder, native lazy loading and sizes attribute
+                const imgHtml = p.coverPlaceholder 
+                    ? `<img 
+                        src="${p.coverPlaceholder}" 
+                        data-src="${p.cover}" 
+                        alt="${p.name}" 
+                        loading="lazy" 
+                        width="${p.width || 800}" 
+                        height="${p.height || 600}"
+                        class="lazy"
+                      />`
+                    : `<img 
+                        src="${p.cover}" 
+                        alt="${p.name}" 
+                        loading="lazy" 
+                        width="${p.width || 800}" 
+                        height="${p.height || 600}"
+                      />`;
+                
                 item.innerHTML = `
-                    <img src="${p.cover}" alt="${p.name}" />
+                    ${imgHtml}
                     <h2>
                         ${p.name}
                         <span class="click-text">click to open</span>
@@ -69,11 +102,24 @@ function showPortfolioList() {
 
                 // Show temporary overlay after image loads
                 const img = item.querySelector("img");
+                if (img.classList.contains('lazy')) {
+                    // For lazy-loaded images, add a load event listener to display the actual image
+                    img.addEventListener("load", () => {
+                        if (img.src !== img.dataset.src && img.dataset.src) {
+                            img.src = img.dataset.src;
+                            img.classList.remove('lazy');
+                        }
+                    });
+                }
+                
                 img.addEventListener("load", () => {
-                    const color = getDominantColor(img);
-                    item.querySelector("h2").style.backgroundColor =
-                        `rgba(${color.r}, ${color.g}, ${color.b}, 0.7)`;
-                    showTemporaryOverlay(item);
+                    // Only process fully loaded images, not placeholders
+                    if (!img.classList.contains('lazy')) {
+                        const color = getDominantColor(img);
+                        item.querySelector("h2").style.backgroundColor =
+                            `rgba(${color.r}, ${color.g}, ${color.b}, 0.7)`;
+                        showTemporaryOverlay(item);
+                    }
                 });
 
                 // Click to open portfolio
@@ -90,6 +136,9 @@ function showPortfolioList() {
             title.addEventListener('click', () => showPortfolioList());
 
             app.appendChild(grid);
+            
+            // Initialize lazy loading for portfolio covers
+            initLazyLoading();
         })
         .catch((err) => {
             console.error(err);
@@ -236,7 +285,7 @@ function showTapOverlay(item) {
 
 /**
  * Fetch images for a single portfolio (folder)
- * Display them in a masonry layout with lazy loading
+ * Display them in a masonry layout with optimized lazy loading
  */
 function showSinglePortfolio(folderName) {
     // Scroll to top immediately when function is called
@@ -287,60 +336,89 @@ function showSinglePortfolio(folderName) {
             grid.style.opacity = "0"; // Start hidden
             grid.style.transition = "opacity 0.5s ease-in-out";
 
-            // Shuffle the images array before creating elements
-            const shuffledImages = shuffleArray([...data.images]);
-
             // Store the current portfolio images for modal navigation
-            currentPortfolioImages = shuffledImages;
+            // Check if we're using optimized images format
+            const useOptimizedImages = data.useOptimizedImages;
+            
+            // Store images in a format suitable for our code
+            // Handle both old and new API formats
+            if (useOptimizedImages) {
+                // New format with optimized images
+                currentPortfolioImages = data.images.map(img => img.optimized);
+            } else {
+                // Old format compatibility
+                currentPortfolioImages = [...data.images];
+            }
+            
+            // Shuffle the images array before creating elements
+            const shuffledImages = shuffleArray(useOptimizedImages ? 
+                [...data.images] : 
+                data.images.map((src, i) => ({
+                    original: src,
+                    optimized: src,
+                    thumbnail: src,
+                    placeholder: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+                    index: i
+                }))
+            );
 
             app.appendChild(grid);
 
             // Set minimum height for grid initially to avoid layout jumps
             grid.style.minHeight = "800px";
 
-            // Preload images to calculate their dimensions for masonry layout
-            const preloadPromises = shuffledImages.map((imgSrc, index) => {
-                return new Promise((resolve) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        // Once image is loaded, we know its dimensions
-                        resolve({
-                            src: imgSrc,
-                            index: index,
-                            width: img.naturalWidth,
-                            height: img.naturalHeight
-                        });
-                    };
-                    img.onerror = () => {
-                        // Resolve with default dimensions on error
-                        resolve({
-                            src: imgSrc,
-                            index: index,
-                            width: 800,
-                            height: 600
-                        });
-                    };
-                    img.src = imgSrc;
-                });
-            });
-
-            // Once all images are preloaded with dimensions, create the masonry layout
-            Promise.all(preloadPromises).then(imagesWithDimensions => {
-                // Create masonry layout
-                renderMasonryLayout(grid, imagesWithDimensions);
+            // Simplified approach - render grid first, then lazy load images
+            // This improves performance and user experience
+            
+            // Map image sources to a uniform format for easier handling
+            const processedImages = shuffledImages.map((imgData, index) => {
+                const src = useOptimizedImages ? 
+                    (imgData.optimized || imgData.original) : 
+                    (typeof imgData === 'string' ? imgData : imgData.original);
                 
-                // Create modal (but don't show it yet)
-                createModal();
-
-                // Initialize lazy loading
-                initLazyLoading();
-
-                // Show grid after a short delay
-                setTimeout(() => {
-                    grid.style.opacity = "1"; // Show grid
-                    grid.style.minHeight = "auto"; // Remove minimum height
-                }, DELAY_BEFORE_SHOWING_PORTFOLIO);
+                return {
+                    src: src,
+                    index: index,
+                    // Default dimensions - will be updated when images actually load
+                    width: 800,
+                    height: 600
+                };
             });
+            
+            // Create masonry layout with default dimensions
+            renderMasonryLayout(grid, processedImages);
+            
+            // Create modal (but don't show it yet)
+            createModal();
+            
+            // Initialize lazy loading - this will start loading images as the user scrolls
+            initLazyLoading();
+            
+            // Show grid immediately to improve perceived performance
+            grid.style.opacity = "1";
+            
+            // Adjust grid height dynamically as images load
+            // This ensures the layout adjusts correctly without jumps
+            if (window.ResizeObserver) {
+                const resizeObserver = new ResizeObserver(entries => {
+                    // When image containers change size, reflow the masonry layout
+                    adjustMasonryLayout(grid);
+                });
+                
+                // Observe all image containers for size changes
+                document.querySelectorAll('.image-container').forEach(container => {
+                    resizeObserver.observe(container);
+                });
+            } else {
+                // Fallback for browsers without ResizeObserver
+                // Adjust layout after all images have loaded
+                window.addEventListener('load', () => {
+                    // Wait a bit to ensure images have rendered
+                    setTimeout(() => {
+                        adjustMasonryLayout(grid, true);
+                    }, 500);
+                });
+            }
         })
         .catch((err) => console.error(err));
 }
@@ -348,7 +426,7 @@ function showSinglePortfolio(folderName) {
 /**
  * Renders images in a masonry layout
  * @param {HTMLElement} grid - The grid container element
- * @param {Array} images - Array of image objects with dimensions
+ * @param {Array} images - Array of image objects with src and index
  */
 function renderMasonryLayout(grid, images) {
     // Define column width based on container width and desired column count
@@ -365,6 +443,11 @@ function renderMasonryLayout(grid, images) {
     // Initialize column heights
     const columnHeights = Array(columnCount).fill(0);
     
+    // Clear the grid if it has content
+    if (grid.children.length > 0) {
+        grid.innerHTML = '';
+    }
+    
     // Create images and position them
     images.forEach((imgData) => {
         // Find the shortest column
@@ -373,9 +456,11 @@ function renderMasonryLayout(grid, images) {
         // Create the image container
         const imgContainer = createImage(imgData.src, imgData.index);
         
+        // Set data attributes for resizing
+        imgContainer.dataset.columnIndex = shortestColumnIndex;
+        
         // Calculate position based on shortest column
         const columnWidth = gridWidth / columnCount;
-        const xPos = shortestColumnIndex * columnWidth;
         const yPos = columnHeights[shortestColumnIndex];
         
         // Position the container absolutely
@@ -383,10 +468,13 @@ function renderMasonryLayout(grid, images) {
         imgContainer.style.top = `${yPos}px`;
         imgContainer.style.width = `calc(${100 / columnCount}% - 1rem)`;
         
-        // Set initial height based on image aspect ratio
-        const aspectRatio = imgData.width / imgData.height;
+        // Set initial placeholder height based on default aspect ratio
+        const aspectRatio = 4/3; // Common default aspect ratio
         const containerWidth = columnWidth - 16; // account for margin
         const containerHeight = containerWidth / aspectRatio;
+        
+        // Set explicit height to prevent layout shifts
+        imgContainer.style.height = `${containerHeight}px`;
         
         // Update column height
         columnHeights[shortestColumnIndex] += containerHeight + 16; // Add margin
@@ -398,17 +486,90 @@ function renderMasonryLayout(grid, images) {
     // Set grid height to tallest column
     grid.style.height = `${Math.max(...columnHeights)}px`;
     
+    // Store column count as data attribute for adjustments
+    grid.dataset.columnCount = columnCount;
+    
     // Add window resize listener to reflow the layout
     window.addEventListener('resize', debounce(() => {
-        // Clear the grid
-        grid.innerHTML = '';
-        
-        // Reset grid height
-        grid.style.height = 'auto';
-        
-        // Re-render the masonry layout
-        renderMasonryLayout(grid, images);
+        adjustMasonryLayout(grid, true);
     }, 200));
+}
+
+/**
+ * Adjusts the masonry layout when images load or window resizes
+ * @param {HTMLElement} grid - The grid container
+ * @param {boolean} forceRearrange - Whether to force complete rearrangement (for resize)
+ */
+function adjustMasonryLayout(grid, forceRearrange = false) {
+    // Get current column count from dataset or recalculate
+    let columnCount = parseInt(grid.dataset.columnCount) || 3;
+    
+    // Recalculate column count if window was resized
+    if (forceRearrange) {
+        if (window.innerWidth <= 600) {
+            columnCount = 1;
+        } else if (window.innerWidth <= 1200) {
+            columnCount = 2;
+        } else {
+            columnCount = 3;
+        }
+        grid.dataset.columnCount = columnCount;
+    }
+    
+    // Get grid width
+    const gridWidth = grid.clientWidth;
+    
+    // Initialize column heights
+    const columnHeights = Array(columnCount).fill(0);
+    
+    // Get all image containers
+    const containers = Array.from(grid.querySelectorAll('.image-container'));
+    
+    // If it's a complete rearrangement, sort by original order
+    if (forceRearrange) {
+        containers.sort((a, b) => {
+            const imgA = a.querySelector('img');
+            const imgB = b.querySelector('img');
+            const indexA = imgA ? parseInt(imgA.dataset.index || 0) : 0;
+            const indexB = imgB ? parseInt(imgB.dataset.index || 0) : 0;
+            return indexA - indexB;
+        });
+    }
+    
+    // Position each container
+    containers.forEach(container => {
+        // For complete rearrangement, find the shortest column
+        // Otherwise, use the original column
+        let columnIndex = forceRearrange ? 
+            columnHeights.indexOf(Math.min(...columnHeights)) : 
+            parseInt(container.dataset.columnIndex) || 0;
+        
+        // Ensure column index is valid with current column count
+        columnIndex = Math.min(columnIndex, columnCount - 1);
+        
+        // Calculate column width
+        const columnWidth = gridWidth / columnCount;
+        
+        // Calculate yPos based on current column height
+        const yPos = columnHeights[columnIndex];
+        
+        // Update container position
+        container.style.left = `${(columnIndex * 100) / columnCount}%`;
+        container.style.top = `${yPos}px`;
+        container.style.width = `calc(${100 / columnCount}% - 1rem)`;
+        
+        // Save column index for future adjustments
+        container.dataset.columnIndex = columnIndex;
+        
+        // Get container height (including margin)
+        const containerHeight = container.offsetHeight + 16;
+        
+        // Update column height
+        columnHeights[columnIndex] += containerHeight;
+    });
+    
+    // Update grid height
+    grid.style.height = `${Math.max(...columnHeights)}px`;
 }
 
 /**
@@ -443,24 +604,99 @@ function createImage(imgSrc, index) {
     const imgContainer = document.createElement("div");
     imgContainer.className = "image-container";
     
-    // For Masonry layout, preload image dimensions to avoid layout shifts
-    const tempImg = new Image();
-    tempImg.src = imgSrc;
-    
     const img = document.createElement("img");
-    // Set a placeholder image 
-    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    // Store the actual image URL in data-src
+    
+    // Set a placeholder transparent image
+    const placeholder = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    img.src = placeholder;
+    
+    // Store the actual image URL in data-src for lazy loading
     img.dataset.src = imgSrc;
+    
+    // Add alt text for accessibility
     img.alt = `Portfolio image ${index + 1}`;
+    
+    // Add lazy loading class
     img.className = 'lazy';
+    
+    // Enable native lazy loading for modern browsers
+    img.loading = 'lazy';
+    
+    // Add width and height attributes to prevent layout shifts
+    // Start with default size - will be updated when image loads
+    img.width = 800;
+    img.height = 600;
+    
+    // Store the index for sorting
+    img.dataset.index = index;
     
     // Add click event for modal
     imgContainer.addEventListener('click', () => {
-        // Ensure image is loaded before opening modal
-        if (!img.classList.contains('lazy')) {
+        // Only open modal if image is loaded
+        if (img.classList.contains('loaded')) {
             openModal(imgSrc, index);
         }
+    });
+
+    imgContainer.appendChild(img);
+    return imgContainer;
+}
+
+/**
+ * Creates an optimized image element with advanced lazy loading
+ * @param {Object} imgData - Object containing image URLs and metadata
+ * @param {number} index - The index of the image in the portfolio
+ * @returns {HTMLElement}
+ */
+function createOptimizedImage(imgData, index) {
+    const imgContainer = document.createElement("div");
+    imgContainer.className = "image-container";
+    
+    const img = document.createElement("img");
+    
+    // Use LQIP (Low Quality Image Placeholder) if available
+    img.src = imgData.placeholder || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    
+    // Set srcset for responsive images if we have different sizes
+    // This allows the browser to choose the appropriate image size
+    if (imgData.thumbnail && imgData.optimized && imgData.original) {
+        img.srcset = `
+            ${imgData.thumbnail} 400w,
+            ${imgData.optimized} 1200w,
+            ${imgData.original} 2000w
+        `;
+        
+        // Set sizes attribute to help browser pick the right image
+        img.sizes = `
+            (max-width: 600px) 100vw,
+            (max-width: 1200px) 50vw,
+            33vw
+        `;
+    }
+    
+    // Store the best quality image URL in data-src for lazy loading
+    img.dataset.src = imgData.optimized || imgData.original;
+    
+    // Store original high-quality image for modal view
+    img.dataset.original = imgData.original;
+    
+    img.alt = `Portfolio image ${index + 1}`;
+    img.className = 'lazy';
+    
+    // Enable native lazy loading
+    img.loading = 'lazy';
+    
+    // Add explicit width and height if available to prevent layout shifts
+    if (imgData.width && imgData.height) {
+        img.width = imgData.width;
+        img.height = imgData.height;
+    }
+    
+    // Add click event for modal
+    imgContainer.addEventListener('click', () => {
+        // Open modal with the highest quality version
+        const modalSrc = imgData.original || imgData.optimized || imgData.thumbnail;
+        openModal(modalSrc, index);
     });
 
     imgContainer.appendChild(img);
@@ -528,10 +764,19 @@ function openModal(imgSrc, index) {
 
     currentImageIndex = index;
 
-    // Set the new image source
-    modalImg.src = imgSrc;
+    // Add loading indicator
+    modalContent.classList.add('loading');
+    
+    // Create a new image to preload
+    const preloadImg = new Image();
+    preloadImg.onload = () => {
+        // Once image is loaded, update the modal
+        modalImg.src = imgSrc;
+        modalContent.classList.remove('loading');
+    };
+    preloadImg.src = imgSrc;
 
-    // Show the modal with a slight delay to ensure smooth animation
+    // Show the modal immediately but content only after preloading
     requestAnimationFrame(() => {
         modal.classList.add('active');
         setTimeout(() => {
@@ -550,6 +795,7 @@ function closeModal() {
     modalContent.classList.remove('active');
     setTimeout(() => {
         modal.classList.remove('active');
+        modalContent.classList.remove('loading');
     }, 300);
 }
 
@@ -578,12 +824,31 @@ function updateModalImage() {
     const modalContent = document.querySelector('.modal-content');
     const modalImg = modalContent.querySelector('img');
 
+    // Add loading indicator
+    modalContent.classList.add('loading');
     modalContent.classList.remove('active');
 
-    setTimeout(() => {
-        modalImg.src = currentPortfolioImages[currentImageIndex];
+    // Preload the image
+    const imgSrc = currentPortfolioImages[currentImageIndex];
+    const preloadImg = new Image();
+    
+    preloadImg.onload = () => {
+        // Only update once preloaded
+        setTimeout(() => {
+            modalImg.src = imgSrc;
+            modalContent.classList.remove('loading');
+            modalContent.classList.add('active');
+        }, 300);
+    };
+    
+    preloadImg.onerror = () => {
+        // Handle error case
+        modalContent.classList.remove('loading');
+        modalImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
         modalContent.classList.add('active');
-    }, 300);
+    };
+    
+    preloadImg.src = imgSrc;
 }
 
 /**
@@ -717,10 +982,82 @@ function getDominantColor(img) {
 }
 
 /**
- * Lazy loading implementation using Intersection Observer
+ * Simplified lazy loading implementation that works reliably across browsers
  */
 function initLazyLoading() {
-    const imageObserver = new IntersectionObserver((entries, observer) => {
+    // First, immediately load all images that are already in viewport
+    loadImagesInViewport();
+    
+    // Then set up observers for the rest
+    const hasNativeLazy = 'loading' in HTMLImageElement.prototype;
+    
+    if (hasNativeLazy) {
+        // For modern browsers, use native lazy loading
+        setupNativeLazyLoading();
+    } else {
+        // For older browsers, use IntersectionObserver
+        setupIntersectionObserver();
+    }
+}
+
+/**
+ * Loads all images currently visible in the viewport
+ */
+function loadImagesInViewport() {
+    if (!window.IntersectionObserver) {
+        return; // Skip if IntersectionObserver is not supported
+    }
+    
+    const observer = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                // Mark as high priority for browsers that support it
+                if ('fetchpriority' in HTMLImageElement.prototype) {
+                    img.fetchpriority = 'high';
+                }
+                loadImage(img);
+                observer.unobserve(img);
+            }
+        });
+    });
+    
+    // Observe all lazy images
+    document.querySelectorAll('img.lazy').forEach(img => {
+        observer.observe(img);
+    });
+}
+
+/**
+ * Sets up native lazy loading for modern browsers
+ */
+function setupNativeLazyLoading() {
+    document.querySelectorAll('img.lazy').forEach(img => {
+        // Set native lazy loading attribute
+        img.loading = 'lazy';
+        
+        if (img.dataset.src) {
+            // Set up load handler
+            img.addEventListener('load', () => {
+                handleImageLoaded(img);
+            });
+            
+            // Set up error handler
+            img.addEventListener('error', () => {
+                handleImageError(img);
+            });
+            
+            // Set the real source to begin loading
+            img.src = img.dataset.src;
+        }
+    });
+}
+
+/**
+ * Sets up IntersectionObserver for older browsers
+ */
+function setupIntersectionObserver() {
+    const observer = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 const img = entry.target;
@@ -729,37 +1066,101 @@ function initLazyLoading() {
             }
         });
     }, {
-        rootMargin: '250px 0px', // Start loading images 50px before they enter viewport
-        threshold: 0.025
+        // Load images 200px before they enter viewport for smoother experience
+        rootMargin: '200px 0px',
+        threshold: 0.01 // 1% visibility is enough to start loading
     });
-
+    
     // Observe all lazy images
     document.querySelectorAll('img.lazy').forEach(img => {
-        imageObserver.observe(img);
+        observer.observe(img);
     });
 }
-// Expose for testing
-window.initLazyLoading = initLazyLoading;
 
 /**
- * Loads the actual image
+ * Loads an image with proper error handling
  * @param {HTMLImageElement} img - The image element to load
  */
 function loadImage(img) {
-    const actualSrc = img.dataset.src;
-    if (actualSrc) {
-        img.src = actualSrc;
-        img.addEventListener('load', () => {
-            // Add orientation class to parent container
-            const orientation = getImageOrientation(img);
-            img.parentElement.classList.add(orientation);
-
-            img.classList.remove('lazy');
-            img.removeAttribute('data-src');
-        });
+    // Skip if already loaded or no data-src
+    if (!img || !img.dataset.src || img.classList.contains('loaded')) {
+        return;
     }
+    
+    const actualSrc = img.dataset.src;
+    
+    // Use image loading technique that works reliably
+    const tempImg = new Image();
+    
+    tempImg.onload = () => {
+        img.src = actualSrc;
+        handleImageLoaded(img, tempImg);
+    };
+    
+    tempImg.onerror = () => {
+        handleImageError(img);
+    };
+    
+    // Start loading
+    tempImg.src = actualSrc;
 }
-// Expose for testing
+
+/**
+ * Handles successful image load
+ * @param {HTMLImageElement} img - The visible image element
+ * @param {HTMLImageElement} tempImg - The temporary preloaded image (optional)
+ */
+function handleImageLoaded(img, tempImg = null) {
+    // If we have a temp image, use it to determine orientation and dimensions
+    // Otherwise use the loaded image itself
+    const imageForOrientation = tempImg || img;
+    
+    // Add orientation class to container
+    const orientation = getImageOrientation(imageForOrientation);
+    if (img.parentElement) {
+        img.parentElement.classList.add(orientation);
+        
+        // Update container height based on actual image dimensions
+        const container = img.parentElement;
+        if (container.style.width && imageForOrientation.naturalWidth && imageForOrientation.naturalHeight) {
+            // Get container width (remove 'px' from the end if present)
+            const containerWidth = parseFloat(container.style.width);
+            
+            // Calculate aspect ratio
+            const aspectRatio = imageForOrientation.naturalWidth / imageForOrientation.naturalHeight;
+            
+            // Calculate new height
+            const newHeight = containerWidth / aspectRatio;
+            
+            // Set new height
+            container.style.height = `${newHeight}px`;
+            
+            // Trigger layout adjustment via ResizeObserver
+            // ResizeObserver will automatically detect the size change
+        }
+    }
+    
+    // Update classes
+    img.classList.remove('lazy');
+    img.classList.add('loaded');
+    
+    // Clean up data attributes
+    img.removeAttribute('data-src');
+}
+
+/**
+ * Handles image loading errors
+ * @param {HTMLImageElement} img - The image element
+ */
+function handleImageError(img) {
+    console.error(`Failed to load image: ${img.dataset.src}`);
+    img.classList.remove('lazy');
+    img.classList.add('error');
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
+}
+
+// Expose functions for testing
+window.initLazyLoading = initLazyLoading;
 window.loadImage = loadImage;
 
 /**

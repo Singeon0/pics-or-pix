@@ -91,13 +91,35 @@
     align-items: center;
 }
 
+/* Loading spinner */
+.modal-content.loading::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    animation: spin 1s infinite linear;
+    z-index: 1;
+}
+
+@keyframes spin {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
 .modal-content img {
     max-height: 90vh;
     max-width: 90vw;
     object-fit: contain;
     transform: scale(0.9);
     opacity: 0;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), 
+                opacity 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+    will-change: transform, opacity;
 }
 
 .modal-content.active img {
@@ -164,10 +186,52 @@
 .photo-grid img.lazy {
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
+    background-color: #f0f0f0; /* Light gray placeholder */
+    min-height: 100px; /* Ensure some space is reserved */
 }
 
-.photo-grid img:not(.lazy) {
+/* Loaded images */
+.photo-grid img.loaded {
     opacity: 1;
+    transition: opacity 0.5s ease-in-out, filter 0.5s ease-in-out, transform 0.5s ease-in-out;
+    animation: fadeInImage 0.5s ease-in-out;
+    will-change: opacity, transform;
+}
+
+/* Error image indicator */
+.photo-grid img.error {
+    opacity: 0.7;
+    filter: grayscale(100%);
+    background-color: #ffdddd; /* Light red background */
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.photo-grid img.error::after {
+    content: "⚠️ Image failed to load";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #555;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+/* Fade in animation */
+@keyframes fadeInImage {
+    0% {
+        opacity: 0;
+        filter: blur(5px);
+        transform: scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        filter: blur(0);
+        transform: scale(1);
+    }
 }
 
 /* Responsive breakpoints */
