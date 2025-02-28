@@ -468,17 +468,16 @@ function renderMasonryLayout(grid, images) {
         imgContainer.style.top = `${yPos}px`;
         imgContainer.style.width = `calc(${100 / columnCount}% - 1rem)`;
         
-        // Calculate dimensions using the helper function
-        const dimensions = calculateContainerDimensions(imgData, columnWidth);
+        // Set initial placeholder height based on default aspect ratio
+        const aspectRatio = 4/3; // Common default aspect ratio
+        const containerWidth = columnWidth - 16; // account for margin
+        const containerHeight = containerWidth / aspectRatio;
         
         // Set explicit height to prevent layout shifts
-        imgContainer.style.height = `${dimensions.height}px`;
-        
-        // Store the aspect ratio for debugging
-        imgContainer.dataset.aspectRatio = dimensions.aspectRatio.toFixed(2);
+        imgContainer.style.height = `${containerHeight}px`;
         
         // Update column height
-        columnHeights[shortestColumnIndex] += dimensions.height + 16; // Add margin
+        columnHeights[shortestColumnIndex] += containerHeight + 16; // Add margin
         
         // Add to the grid
         grid.appendChild(imgContainer);
@@ -494,30 +493,6 @@ function renderMasonryLayout(grid, images) {
     window.addEventListener('resize', debounce(() => {
         adjustMasonryLayout(grid, true);
     }, 200));
-}
-
-/**
- * Helper function to calculate container dimensions based on image dimensions and column width
- * @param {Object} imgData - Image data with width and height
- * @param {number} columnWidth - Width of the column in pixels
- * @returns {Object} Container dimensions and aspect ratio
- */
-function calculateContainerDimensions(imgData, columnWidth) {
-    // Calculate aspect ratio from image dimensions (fall back to 4:3 if missing)
-    const aspectRatio = imgData.width && imgData.height ? 
-        imgData.width / imgData.height : 4/3;
-    
-    // Calculate container width (accounting for margin)
-    const containerWidth = columnWidth - 16; // 16px for margin
-    
-    // Calculate container height based on aspect ratio
-    const containerHeight = containerWidth / aspectRatio;
-    
-    return { 
-        width: containerWidth,
-        height: containerHeight,
-        aspectRatio: aspectRatio
-    };
 }
 
 /**
@@ -586,32 +561,11 @@ function adjustMasonryLayout(grid, forceRearrange = false) {
         // Save column index for future adjustments
         container.dataset.columnIndex = columnIndex;
         
-        // Get image inside container
-        const img = container.querySelector('img');
+        // Get container height (including margin)
+        const containerHeight = container.offsetHeight + 16;
         
-        // If image is loaded, recalculate dimensions based on actual aspect ratio
-        if (img && img.complete && img.naturalWidth && img.naturalHeight) {
-            // Get actual dimensions from the loaded image
-            const imgData = {
-                width: img.naturalWidth,
-                height: img.naturalHeight
-            };
-            
-            // Calculate dimensions based on actual image
-            const dimensions = calculateContainerDimensions(imgData, columnWidth);
-            
-            // Update container height
-            container.style.height = `${dimensions.height}px`;
-            
-            // Update column height with calculated height
-            columnHeights[columnIndex] += dimensions.height + 16; // Add margin
-        } else {
-            // Get container height (including margin) when image not loaded
-            const containerHeight = container.offsetHeight + 16;
-            
-            // Update column height with current container height
-            columnHeights[columnIndex] += containerHeight;
-        }
+        // Update column height
+        columnHeights[columnIndex] += containerHeight;
     });
     
     // Update grid height
@@ -1168,42 +1122,21 @@ function handleImageLoaded(img, tempImg = null) {
         
         // Update container height based on actual image dimensions
         const container = img.parentElement;
-        if (container && container.style.width && imageForOrientation.naturalWidth && imageForOrientation.naturalHeight) {
-            // Extract percentage width from container's style
-            // Parse the width value from the calc() expression (e.g., "calc(33.33% - 1rem)")
-            const widthMatch = container.style.width.match(/calc\(([0-9.]+)%/);
-            if (!widthMatch) return;
-            
-            const containerWidthPercent = parseFloat(widthMatch[1]);
-            
-            // Get the grid container width
-            const gridContainer = container.parentElement;
-            const gridWidth = gridContainer ? gridContainer.clientWidth : window.innerWidth;
-            
-            // Calculate actual container width in pixels (excluding margin)
-            const containerWidth = (containerWidthPercent / 100) * gridWidth - 16; // 16px for margin
+        if (container.style.width && imageForOrientation.naturalWidth && imageForOrientation.naturalHeight) {
+            // Get container width (remove 'px' from the end if present)
+            const containerWidth = parseFloat(container.style.width);
             
             // Calculate aspect ratio
             const aspectRatio = imageForOrientation.naturalWidth / imageForOrientation.naturalHeight;
             
-            // Ensure aspect ratio is valid and reasonable
-            if (isNaN(aspectRatio) || !isFinite(aspectRatio) || aspectRatio <= 0) {
-                console.warn('Invalid aspect ratio calculated:', aspectRatio);
-                return;
-            }
-            
-            // Calculate new height based on aspect ratio
+            // Calculate new height
             const newHeight = containerWidth / aspectRatio;
             
-            // Set new height if it's a reasonable value
-            if (isFinite(newHeight) && newHeight > 0) {
-                container.style.height = `${newHeight}px`;
-                
-                // Store the calculated aspect ratio for debugging
-                container.dataset.aspectRatio = aspectRatio.toFixed(2);
-            } else {
-                console.warn('Invalid container height calculated:', newHeight);
-            }
+            // Set new height
+            container.style.height = `${newHeight}px`;
+            
+            // Trigger layout adjustment via ResizeObserver
+            // ResizeObserver will automatically detect the size change
         }
     }
     
