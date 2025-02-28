@@ -26,6 +26,9 @@ let isSwiping = false;
 
 document.addEventListener("DOMContentLoaded", () => {
     showPortfolioList();
+    
+    // Add global keyboard event listener for modal navigation
+    document.addEventListener('keydown', handleKeyboardNavigation);
 });
 
 /*************************************************
@@ -455,11 +458,30 @@ function createImage(imgSrc, index) {
     img.alt = `Portfolio image ${index + 1}`;
     img.className = 'lazy';
     
+    // Disable pointer events until image is loaded
+    imgContainer.style.pointerEvents = 'none';
+    
     // Add click event for modal
     imgContainer.addEventListener('click', () => {
-        // Ensure image is loaded before opening modal
-        if (!img.classList.contains('lazy')) {
-            openModal(imgSrc, index);
+        // Always allow opening the modal, but show placeholder if needed
+        openModal(imgSrc, index);
+        
+        // If image isn't loaded yet, force load it
+        if (img.classList.contains('lazy') && img.dataset.src) {
+            loadImage(img);
+        }
+    });
+    
+    // Add accessibility improvements for keyboard navigation
+    imgContainer.setAttribute('tabindex', '0');
+    imgContainer.setAttribute('role', 'button');
+    imgContainer.setAttribute('aria-label', `View image ${index + 1}`);
+    
+    // Handle keyboard Enter/Space for accessibility
+    imgContainer.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            imgContainer.click();
         }
     });
 
@@ -480,12 +502,17 @@ function createModal() {
     if (!modal) {
         modal = document.createElement('div');
         modal.className = 'modal-overlay';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-label', 'Image viewer');
+        
         modal.innerHTML = `
             <button class="modal-nav prev" aria-label="Previous image"></button>
             <div class="modal-content">
                 <img src="" alt="Modal image">
             </div>
             <button class="modal-nav next" aria-label="Next image"></button>
+            <button class="modal-close" aria-label="Close modal">×</button>
         `;
 
         // Add event listeners
@@ -497,6 +524,7 @@ function createModal() {
 
         const prevBtn = modal.querySelector('.prev');
         const nextBtn = modal.querySelector('.next');
+        const closeBtn = modal.querySelector('.modal-close');
 
         prevBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -507,13 +535,66 @@ function createModal() {
             e.stopPropagation();
             showNextImage();
         });
+        
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeModal();
+        });
 
         document.body.appendChild(modal);
     }
+    
     // Initialize touch events for mobile
     initTouchEvents(modal);
+    
+    // Add CSS styles for Safari compatibility if not already added
+    addSafariModalStyles();
 
     return modal;
+}
+
+/**
+ * Add special CSS fixes for Safari
+ */
+function addSafariModalStyles() {
+    // Check if we've already added these styles
+    if (document.getElementById('safari-modal-styles')) return;
+    
+    const styleEl = document.createElement('style');
+    styleEl.id = 'safari-modal-styles';
+    styleEl.textContent = `
+        /* Safari-specific fixes */
+        .modal-overlay {
+            -webkit-backdrop-filter: blur(5px);
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-content img {
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+        }
+        
+        /* Add close button */
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+        }
+    `;
+    
+    document.head.appendChild(styleEl);
 }
 
 /**
@@ -530,13 +611,25 @@ function openModal(imgSrc, index) {
 
     // Set the new image source
     modalImg.src = imgSrc;
+    
+    // Store previous active element for accessibility
+    window.lastActiveElement = document.activeElement;
+    
+    // Prevent background scrolling while modal is open
+    document.body.style.overflow = 'hidden';
 
     // Show the modal with a slight delay to ensure smooth animation
     requestAnimationFrame(() => {
         modal.classList.add('active');
+        
+        // For Safari compatibility, use timeout
         setTimeout(() => {
             modalContent.classList.add('active');
-        }, 10);
+            
+            // Set focus to the modal for keyboard navigation
+            modal.setAttribute('tabindex', '-1');
+            modal.focus();
+        }, 20);
     });
 }
 
@@ -545,12 +638,25 @@ function openModal(imgSrc, index) {
  */
 function closeModal() {
     const modal = document.querySelector('.modal-overlay');
+    if (!modal) return;
+    
     const modalContent = modal.querySelector('.modal-content');
 
     modalContent.classList.remove('active');
+    
+    // Allow a longer transition for Safari compatibility
     setTimeout(() => {
         modal.classList.remove('active');
-    }, 300);
+        
+        // Restore background scrolling
+        document.body.style.overflow = '';
+        
+        // Restore focus to previous element
+        if (window.lastActiveElement) {
+            window.lastActiveElement.focus();
+            window.lastActiveElement = null;
+        }
+    }, 400);
 }
 
 /**
@@ -668,6 +774,42 @@ function handleTouchEnd(e) {
     }
 }
 
+/**
+ * Handles keyboard navigation for the modal
+ * @param {KeyboardEvent} e - The keyboard event
+ */
+function handleKeyboardNavigation(e) {
+    const modal = document.querySelector('.modal-overlay');
+    
+    // Only process keyboard events when modal is active
+    if (modal && modal.classList.contains('active')) {
+        switch (e.key) {
+            case 'ArrowLeft':
+                e.preventDefault();
+                showPreviousImage();
+                break;
+                
+            case 'ArrowRight':
+                e.preventDefault();
+                showNextImage();
+                break;
+                
+            case 'Escape':
+                e.preventDefault();
+                closeModal();
+                break;
+                
+            case 'Enter':
+                // For accessibility - if an item is focused, simulate click
+                if (document.activeElement && document.activeElement.classList.contains('modal-nav')) {
+                    e.preventDefault();
+                    document.activeElement.click();
+                }
+                break;
+        }
+    }
+}
+
 /*************************************************
  *  UTILITY FUNCTIONS (Color, Shuffle, etc.)
  *************************************************/
@@ -718,46 +860,116 @@ function getDominantColor(img) {
 
 /**
  * Lazy loading implementation using Intersection Observer
+ * with fallback for browsers that don't support it
  */
 function initLazyLoading() {
-    const imageObserver = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const img = entry.target;
-                loadImage(img);
-                observer.unobserve(img);
-            }
+    // Check if Intersection Observer is supported
+    if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    loadImage(img);
+                    observer.unobserve(img);
+                }
+            });
+        }, {
+            rootMargin: '250px 0px', // Start loading images 250px before they enter viewport
+            threshold: 0.025
         });
-    }, {
-        rootMargin: '250px 0px', // Start loading images 50px before they enter viewport
-        threshold: 0.025
-    });
 
-    // Observe all lazy images
-    document.querySelectorAll('img.lazy').forEach(img => {
-        imageObserver.observe(img);
-    });
+        // Observe all lazy images
+        document.querySelectorAll('img.lazy[data-src]').forEach(img => {
+            imageObserver.observe(img);
+        });
+    } else {
+        // Fallback for browsers without Intersection Observer (e.g. older Safari versions)
+        loadAllImagesImmediately();
+    }
+    
+    // Add scroll event as a backup for IntersectionObserver
+    window.addEventListener('scroll', debounce(checkAndLoadVisibleImages, 200));
+    
+    // Force check once on init (after short delay to ensure DOM is ready)
+    setTimeout(checkAndLoadVisibleImages, 500);
 }
 // Expose for testing
 window.initLazyLoading = initLazyLoading;
+
+/**
+ * Fallback method to load all images immediately
+ */
+function loadAllImagesImmediately() {
+    const lazyImages = document.querySelectorAll('img.lazy[data-src]');
+    lazyImages.forEach(img => loadImage(img));
+    console.log('Lazy loading fallback: loaded all images immediately');
+}
+
+/**
+ * Manually check which images are in viewport and load them
+ */
+function checkAndLoadVisibleImages() {
+    const lazyImages = document.querySelectorAll('img.lazy[data-src]');
+    const viewportHeight = window.innerHeight;
+    const scrollTop = window.scrollY;
+    
+    lazyImages.forEach(img => {
+        const rect = img.getBoundingClientRect();
+        // Load image if it's in or near the viewport
+        if (rect.top >= -300 && rect.top <= viewportHeight + 300) {
+            loadImage(img);
+        }
+    });
+}
 
 /**
  * Loads the actual image
  * @param {HTMLImageElement} img - The image element to load
  */
 function loadImage(img) {
+    // Skip if already loaded or no data-src
+    if (!img.classList.contains('lazy') || !img.dataset.src) return;
+    
     const actualSrc = img.dataset.src;
-    if (actualSrc) {
+    
+    // Create a new image to preload
+    const tempImg = new Image();
+    tempImg.onload = function() {
+        // Only update the actual image once the new one is loaded
         img.src = actualSrc;
-        img.addEventListener('load', () => {
-            // Add orientation class to parent container
-            const orientation = getImageOrientation(img);
+        
+        // Add orientation class to parent container
+        const orientation = getImageOrientation(tempImg);
+        if (img.parentElement) {
             img.parentElement.classList.add(orientation);
-
-            img.classList.remove('lazy');
-            img.removeAttribute('data-src');
-        });
-    }
+        }
+        
+        img.classList.remove('lazy');
+        img.removeAttribute('data-src');
+        
+        // Enable click on parent (image container) only after image is loaded
+        if (img.parentElement) {
+            img.parentElement.style.pointerEvents = 'auto';
+        }
+        
+        // For Safari compatibility, force a reflow/repaint
+        img.style.opacity = '0.99';
+        setTimeout(() => {
+            img.style.opacity = '1';
+        }, 10);
+        
+        console.log('Image loaded:', actualSrc);
+    };
+    
+    // Handle error case
+    tempImg.onerror = function() {
+        console.error('Failed to load image:', actualSrc);
+        img.classList.remove('lazy');
+        img.removeAttribute('data-src');
+    };
+    
+    // Start loading the image
+    tempImg.src = actualSrc;
 }
 // Expose for testing
 window.loadImage = loadImage;
