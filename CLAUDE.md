@@ -9,7 +9,7 @@
 - `npm start`: Run the Express server
 - `npm test`: Run all frontend tests
 - `npm test -- <test-file-name>`: Run specific test file (e.g., `npm test -- photo-grid.test.js`)
-- `npm run test:watch`: Run tests in watch mode 
+- `npm run test:watch`: Run tests in watch mode
 - `npm run test:coverage`: Generate test coverage report
 
 ## Code Style Guidelines

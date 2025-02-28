@@ -71,22 +71,9 @@
     align-items: center;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.5s ease, background-color 0.5s ease;
+    transition: opacity 0.3s ease, background-color 0.3s ease;
     z-index: 1001;
     background-color: rgba(0, 0, 0, 0);
-    
-    /* Add backdrop blur for modern browsers */
-    -webkit-backdrop-filter: blur(5px);
-    backdrop-filter: blur(5px);
-    
-    /* Fix for iOS Safari height issues */
-    height: 100%;
-    height: -webkit-fill-available;
-    
-    /* Force hardware acceleration in Safari */
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    will-change: opacity, background-color;
 }
 
 .modal-overlay.active {
@@ -102,11 +89,6 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    
-    /* Safari performance fix */
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    will-change: transform, opacity;
 }
 
 .modal-content img {
@@ -115,18 +97,11 @@
     object-fit: contain;
     transform: scale(0.9);
     opacity: 0;
-    transition: transform 0.4s ease, opacity 0.4s ease;
-    
-    /* Safari specific fixes */
-    -webkit-transform: scale(0.9);
-    -webkit-transition: -webkit-transform 0.4s ease, opacity 0.4s ease;
-    -webkit-transform-style: preserve-3d;
-    transform-style: preserve-3d;
+    transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .modal-content.active img {
     transform: scale(1);
-    -webkit-transform: scale(1);
     opacity: 1;
 }
 
@@ -189,11 +164,6 @@
 .photo-grid img.lazy {
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
-    
-    /* Force hardware acceleration for better Safari performance */
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    will-change: opacity;
 }
 
 .photo-grid img:not(.lazy) {
@@ -241,53 +211,5 @@
     
     .photo-grid {
         padding: 0 0.5rem;
-    }
-    
-    /* Enhanced touch targets for mobile */
-    .modal-nav {
-        width: 60px;
-        height: 60px;
-    }
-    
-    /* Add close button for easier closing on mobile */
-    .modal-close {
-        top: 10px;
-        right: 10px;
-    }
-}
-
-/* iOS Safari specific fixes */
-@supports (-webkit-touch-callout: none) {
-    /* iOS Safari specific */
-    body {
-        /* Prevent scroll bounce in iOS Safari */
-        position: fixed;
-        width: 100%;
-        -webkit-overflow-scrolling: touch;
-    }
-    
-    .modal-overlay {
-        /* Ensure full height on iOS Safari */
-        height: -webkit-fill-available;
-    }
-    
-    .modal-nav {
-        /* Increase touch target size for iOS Safari */
-        min-width: 44px;
-        min-height: 44px;
-        
-        /* Add extra tap area for iOS */
-        padding: 15px;
-    }
-    
-    /* Improve scroll performance */
-    .photo-grid {
-        -webkit-overflow-scrolling: touch;
-    }
-    
-    /* Fix image rendering issues in iOS Safari */
-    img {
-        -webkit-backface-visibility: hidden;
-        backface-visibility: hidden;
     }
 }
