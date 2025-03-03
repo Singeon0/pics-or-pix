@@ -307,9 +307,102 @@ function showSinglePortfolio(folderName) {
             // Initialize lazy loading
             initLazyLoading();
 
-            // Show grid after a short delay
+            // Apply masonry layout for desktops with 3 columns
+            function applyMasonryLayout() {
+                // Only apply masonry for desktop users with large screens where 3 columns are visible
+                const isLargeScreen = window.matchMedia('(min-width: 1201px)').matches;
+                const isDesktop = !window.matchMedia('(hover: none)').matches;
+                
+                if (isLargeScreen && isDesktop) {
+                    // Calculate number of columns (verify it's exactly 3)
+                    const gridComputedStyle = window.getComputedStyle(grid);
+                    const gridTemplateColumns = gridComputedStyle.getPropertyValue('grid-template-columns');
+                    const columnCount = gridTemplateColumns.split(' ').length;
+                    
+                    if (columnCount === 3) {
+                        // Apply masonry layout by adjusting the grid rows
+                        const containers = Array.from(grid.querySelectorAll('.image-container'));
+                        const columnGap = parseInt(gridComputedStyle.columnGap || 16); // Default 1rem = 16px if undefined
+                        const columnWidth = (grid.clientWidth - (columnGap * 2)) / 3;
+                        
+                        // Reset any previous masonry styles
+                        containers.forEach(container => {
+                            container.style.gridRowEnd = '';
+                        });
+                        
+                        // Apply masonry layout once images are loaded
+                        const loadedImages = [];
+                        
+                        const positionImages = () => {
+                            if (loadedImages.length === containers.length) {
+                                // All images loaded, now apply the masonry layout
+                                let columns = [0, 0, 0]; // Track height of each column
+                                
+                                containers.forEach((container, index) => {
+                                    // Get image dimensions
+                                    const img = container.querySelector('img');
+                                    const isPortrait = container.classList.contains('portrait');
+                                    
+                                    // Calculate which column to place it in (shortest column)
+                                    const shortestColIndex = columns.indexOf(Math.min(...columns));
+                                    
+                                    // Calculate grid row position
+                                    const rowStart = Math.floor(columns[shortestColIndex] / 10) + 1;
+                                    const rowSpan = Math.ceil(container.offsetHeight / 10);
+                                    
+                                    // Position the item
+                                    container.style.gridColumnStart = shortestColIndex + 1;
+                                    container.style.gridColumnEnd = shortestColIndex + 2;
+                                    container.style.gridRowStart = rowStart;
+                                    container.style.gridRowEnd = `span ${rowSpan}`;
+                                    
+                                    // Update column height
+                                    columns[shortestColIndex] += container.offsetHeight + columnGap;
+                                });
+                                
+                                // Set the grid's height to the tallest column
+                                grid.style.gridAutoRows = '10px';
+                            }
+                        };
+                        
+                        // Monitor image loading
+                        const imgLoadObserver = new MutationObserver((mutations) => {
+                            mutations.forEach(mutation => {
+                                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                                    const img = mutation.target;
+                                    if (!img.classList.contains('lazy') && !loadedImages.includes(img)) {
+                                        loadedImages.push(img);
+                                        positionImages();
+                                    }
+                                }
+                            });
+                        });
+                        
+                        // Observe all images for the class change that indicates they've loaded
+                        containers.forEach(container => {
+                            const img = container.querySelector('img');
+                            if (!img.classList.contains('lazy')) {
+                                loadedImages.push(img);
+                            } else {
+                                imgLoadObserver.observe(img, { attributes: true });
+                            }
+                        });
+                        
+                        // Initial positioning attempt
+                        positionImages();
+                    }
+                }
+            }
+            
+            // Apply masonry after a short delay once the grid is visible
             setTimeout(() => {
                 grid.style.opacity = "1"; // Show grid
+                
+                // Apply masonry layout after images start loading
+                setTimeout(applyMasonryLayout, 100);
+                
+                // Re-apply masonry on window resize
+                window.addEventListener('resize', applyMasonryLayout);
             }, DELAY_BEFORE_SHOWING_PORTFOLIO);
         })
         .catch((err) => console.error(err));
