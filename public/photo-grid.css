@@ -1,0 +1,215 @@
+/*
+   Simple grid styles for the images in a single portfolio.
+*/
+
+/* Fixed header for single portfolio view */
+.fixed-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;  /* Increased z-index */
+    margin: 0;      /* Reset margin */
+    padding: 3rem 3rem 1rem 3rem;  /* Combined margins and padding from body */
+    transition: background-color 0.3s ease;
+    width: 100%;
+    /* Add a solid background that extends full width */
+    background-color: inherit;  /* This will be set by JavaScript to match body */
+}
+
+/* Adjust spacing when fixed header is present */
+.has-fixed-header {
+    padding-top: 7rem; /* Increased to account for header height + padding */
+}
+
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    width: 100%;
+    max-width: 1800px;
+    margin: 1rem auto;
+    padding: 0 0.5rem;
+}
+
+/* Each container for an image */
+.image-container {
+    width: 100%;
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Add orientation-specific aspect ratios */
+.image-container.landscape {
+    aspect-ratio: 3/2;
+}
+
+.image-container.portrait {
+    aspect-ratio: 2/3;
+}
+
+/*
+   The images themselves should keep their aspect ratio
+*/
+.photo-grid img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.image-container:hover img {
+    transform: scale(1.05);
+}
+
+/* Modal styles remain unchanged */
+/* Modal overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, background-color 0.3s ease;
+    z-index: 1001;  /* Ensure it's above the fixed header */
+    background-color: rgba(0, 0, 0, 0); /* Start transparent */
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+    background-color: rgba(0, 0, 0, 0.9); /* Dark semi-transparent background when active */
+}
+
+.modal-content {
+    position: relative;
+    max-height: 90vh;
+    max-width: 90vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content img {
+    max-height: 90vh;
+    max-width: 90vw;
+    object-fit: contain;
+    transform: scale(0.9);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.modal-content.active img {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.modal-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #333;
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 1rem;
+    transition: opacity 0.3s ease;
+    opacity: 0.6;
+    z-index: 1001;
+}
+
+.modal-nav:hover {
+    opacity: 1;
+}
+
+.modal-nav.prev {
+    left: 1rem;
+}
+
+.modal-nav.next {
+    right: 1rem;
+}
+
+.modal-nav::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    border-top: 2px solid #333;
+    border-right: 2px solid #333;
+}
+
+.modal-nav.prev::before {
+    left: 60%;
+    transform: translateY(-50%) rotate(-135deg);
+}
+
+.modal-nav.next::before {
+    right: 60%;
+    transform: translateY(-50%) rotate(45deg);
+}
+
+#btn-back {
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    border: 1px solid #444;
+    background: #eee;
+    margin-bottom: 1rem;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 1200px) {
+    .photo-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .fixed-header {
+        padding: 1.5rem 1.5rem 1rem 1.5rem;
+    }
+    .has-fixed-header {
+        padding-top: 5rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .photo-grid {
+        grid-template-columns: 1fr;
+        padding: 0 0.25rem;
+    }
+
+    .modal-nav {
+        font-size: 1.5rem;
+        padding: 0.5rem;
+    }
+
+    .modal-nav::before {
+        width: 15px;
+        height: 15px;
+    }
+
+    .fixed-header {
+        padding: 1rem 1rem 1rem 1rem;
+    }
+    .has-fixed-header {
+        padding-top: 4rem;
+    }
+}
+
+.photo-grid img.lazy {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.photo-grid img:not(.lazy) {
+    opacity: 1;
+}

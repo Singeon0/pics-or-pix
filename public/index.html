@@ -4,47 +4,17 @@
   <meta charset="UTF-8" />
   <title>Pics or Pix</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- This is a fallback file that should redirect to the appropriate version -->
-  <style>
-    body {
-      font-family: sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-      padding: 20px;
-      text-align: center;
-    }
-    .loader {
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #333;
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  </style>
+  <!-- Google Fonts: Oswald -->
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&display=swap" rel="stylesheet" />
+  <!-- Link to the stylesheet -->
+  <link rel="stylesheet" href="home.css" />
+  <link rel="stylesheet" href="photo-grid.css" />
 </head>
 <body>
-  <div>
-    <div class="loader"></div>
-    <p>Redirecting to the appropriate version...</p>
-  </div>
-  
-  <script>
-    // This script just shows a loading indicator while the server handles the redirect
-    // The Express server will serve either desktop/index.html or mobile/index.html
-    // based on User-Agent detection
-    setTimeout(() => {
-      // Fallback redirect in case server redirect fails
-      window.location.reload();
-    }, 3000);
-  </script>
+<!-- Main container for our dynamic content -->
+<div id="app"></div>
+
+<!-- Load scripts in an order that respects their dependencies -->
+<script src="main.js"></script>
 </body>
 </html>
