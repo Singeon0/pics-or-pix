@@ -5,7 +5,38 @@ const fs = require("fs");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1) Serve static files from "public" folder
+// Helper function to detect mobile devices
+const isMobile = (req) => {
+    const userAgent = req.headers['user-agent'] || '';
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+};
+
+// Static files middleware with conditional routing
+app.use((req, res, next) => {
+    // Skip API requests
+    if (req.path.startsWith('/api/')) {
+        return next();
+    }
+    
+    // For the root path, serve the appropriate index.html
+    if (req.path === '/' || req.path === '/index.html') {
+        const isMobileDevice = isMobile(req);
+        const htmlPath = isMobileDevice 
+            ? path.join(__dirname, 'public', 'mobile', 'index.html')
+            : path.join(__dirname, 'public', 'desktop', 'index.html');
+        
+        // Check if the file exists, otherwise fallback to standard index.html
+        if (fs.existsSync(htmlPath)) {
+            return res.sendFile(htmlPath);
+        }
+        // Fallback to the standard index.html if device-specific version doesn't exist
+        return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    }
+    
+    next();
+});
+
+// Serve static files from "public" folder
 app.use(express.static(path.join(__dirname, "public")));
 
 // Helper function to get all images from a folder
@@ -20,7 +51,7 @@ const getImagesFromFolder = (folderPath, folderName) => {
     }
 };
 
-// 2) API endpoint: list all portfolios
+// API endpoint: list all portfolios
 app.get("/api/portfolios", (req, res) => {
     const imagesDir = path.join(__dirname, "public", "images");
 
@@ -65,7 +96,7 @@ app.get("/api/portfolios", (req, res) => {
     }
 });
 
-// 3) API endpoint: list images in a specific portfolio folder
+// API endpoint: list images in a specific portfolio folder
 app.get("/api/portfolios/:folderName", (req, res) => {
     const folderName = req.params.folderName;
     const imagesDir = path.join(__dirname, "public", "images");
@@ -111,7 +142,14 @@ app.get("/api/portfolios/:folderName", (req, res) => {
     });
 });
 
-// 4) Start the server
+// API endpoint to get client device type
+app.get("/api/device", (req, res) => {
+    res.json({
+        isMobile: isMobile(req)
+    });
+});
+
+// Start the server
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
