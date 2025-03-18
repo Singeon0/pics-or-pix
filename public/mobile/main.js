@@ -28,6 +28,9 @@ document.addEventListener("DOMContentLoaded", () => {
     verifyMobileExperience();
     // Then load the portfolio
     showPortfolioList();
+    
+    // Apply Safari-specific optimizations
+    detectSafari();
 });
 
 /**
@@ -471,10 +474,27 @@ function updateModalImage() {
  */
 function initTouchEvents(modal) {
     const modalContent = modal.querySelector('.modal-content');
-
-    modalContent.addEventListener('touchstart', handleTouchStart, { passive: false });
-    modalContent.addEventListener('touchmove', handleTouchMove, { passive: false });
-    modalContent.addEventListener('touchend', handleTouchEnd, { passive: false });
+    
+    // Safari-specific optimizations for touch events
+    const options = { passive: false };
+    
+    // Add proper event cleanup when modal is closed
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'modal-close';
+    closeBtn.setAttribute('aria-label', 'Close modal');
+    closeBtn.innerHTML = '×';
+    closeBtn.addEventListener('click', closeModal);
+    modal.appendChild(closeBtn);
+    
+    // Improved touch handling for Safari
+    modalContent.addEventListener('touchstart', handleTouchStart, options);
+    modalContent.addEventListener('touchmove', handleTouchMove, options);
+    modalContent.addEventListener('touchend', handleTouchEnd, options);
+    
+    // Handle swipe gesture cancellation better in Safari
+    window.addEventListener('touchcancel', () => {
+        isSwiping = false;
+    }, options);
 }
 
 /**
@@ -593,9 +613,70 @@ function getDominantColor(img) {
 }
 
 /**
+ * Detect Safari and apply optimizations
+ */
+function detectSafari() {
+    fetch("/api/device")
+        .then(res => res.json())
+        .then(data => {
+            if (data.isSafari) {
+                document.body.classList.add('safari');
+                
+                // Safari-specific optimizations for viewport height issues
+                function updateViewportHeight() {
+                    // Fix for Safari mobile viewport height issue
+                    document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+                }
+                
+                // Update on resize and orientation change
+                window.addEventListener('resize', updateViewportHeight);
+                window.addEventListener('orientationchange', updateViewportHeight);
+                updateViewportHeight();
+            }
+        })
+        .catch(err => console.error("Error detecting Safari:", err));
+}
+
+/**
  * Lazy loading implementation using Intersection Observer
+ * With Safari-specific optimizations
  */
 function initLazyLoading() {
+    // Check for IntersectionObserver support (Safari < 12.1 fallback)
+    if (!('IntersectionObserver' in window) || 
+        (/iPad|iPhone|iPod/.test(navigator.userAgent) && 
+         !window.MSStream && 
+         navigator.userAgent.match(/Version\/(\d+\.\d+)/) &&
+         parseFloat(navigator.userAgent.match(/Version\/(\d+\.\d+)/)[1]) < 12.1)) {
+        
+        // Fallback for older Safari: simple scroll-based loading
+        const lazyImages = document.querySelectorAll('img.lazy');
+        
+        function lazyLoad() {
+            const scrollTop = window.pageYOffset;
+            lazyImages.forEach(img => {
+                if (img.offsetTop < window.innerHeight + scrollTop + 250) {
+                    loadImage(img);
+                }
+            });
+        }
+        
+        // Load visible images immediately
+        lazyLoad();
+        
+        // Then listen for scroll events
+        let lazyLoadThrottleTimeout;
+        window.addEventListener('scroll', function() {
+            if (lazyLoadThrottleTimeout) {
+                clearTimeout(lazyLoadThrottleTimeout);
+            }
+            lazyLoadThrottleTimeout = setTimeout(lazyLoad, 20);
+        });
+        
+        return;
+    }
+    
+    // Modern browsers including Safari 12.1+
     const imageObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -622,15 +703,21 @@ function initLazyLoading() {
 function loadImage(img) {
     const actualSrc = img.dataset.src;
     if (actualSrc) {
-        img.src = actualSrc;
-        img.addEventListener('load', () => {
+        // For Safari: preload images for better performance
+        const tempImage = new Image();
+        tempImage.onload = () => {
+            img.src = actualSrc;
             // Add orientation class to parent container
-            const orientation = getImageOrientation(img);
+            const orientation = getImageOrientation(tempImage);
             img.parentElement.classList.add(orientation);
-
-            img.classList.remove('lazy');
-            img.removeAttribute('data-src');
-        });
+            
+            // Ensure image is properly rendered before removing lazy class
+            requestAnimationFrame(() => {
+                img.classList.remove('lazy');
+                img.removeAttribute('data-src');
+            });
+        };
+        tempImage.src = actualSrc;
     }
 }
 

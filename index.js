@@ -152,8 +152,13 @@ app.get("/api/portfolios/:folderName", (req, res) => {
 
 // API endpoint to get client device type
 app.get("/api/device", (req, res) => {
+    const userAgent = req.headers['user-agent'] || '';
+    const isSafari = /^((?!chrome|android).)*safari/i.test(userAgent);
+    
     res.json({
-        isMobile: isMobile(req)
+        isMobile: isMobile(req),
+        isSafari: isSafari,
+        userAgent: userAgent
     });
 });
 

@@ -7,6 +7,10 @@
     box-sizing: border-box;
 }
 
+:root {
+    --vh: 1vh; /* Custom viewport height var for Safari */
+}
+
 body {
     font-family: 'Oswald', Arial, sans-serif;
     background: #fff;
@@ -14,6 +18,9 @@ body {
     max-width: 100%;
     margin: 1rem; /* Smaller margins for mobile */
     padding: 0.5rem;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling for Safari */
+    height: 100vh; /* Fallback */
+    height: calc(var(--vh, 1vh) * 100); /* Safari viewport fix */
 }
 
 /* General container for dynamic views */
@@ -201,6 +208,26 @@ body {
     transition: opacity 0.3s ease, background-color 0.3s ease;
     z-index: 1001;
     background-color: rgba(0, 0, 0, 0);
+    -webkit-user-select: none; /* Safari-specific: prevent text selection */
+}
+
+/* Close button for modal (Safari UX improvement) */
+.modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1003;
+    cursor: pointer;
 }
 
 .modal-overlay.active {
@@ -220,11 +247,14 @@ body {
 
 .modal-content img {
     max-height: 85vh;
+    max-height: calc(var(--vh, 1vh) * 85); /* Safari height fix */
     max-width: 95vw;
     object-fit: contain;
     transform: scale(0.9);
     opacity: 0;
     transition: transform 0.3s ease, opacity 0.3s ease;
+    -webkit-transform: translateZ(0); /* Safari performance boost */
+    will-change: transform, opacity; /* Safari performance hint */
 }
 
 .modal-content.active img {
@@ -280,8 +310,28 @@ body {
 .photo-grid img.lazy {
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
+    -webkit-backface-visibility: hidden; /* Safari performance boost */
 }
 
 .photo-grid img:not(.lazy) {
     opacity: 1;
+    -webkit-backface-visibility: hidden; /* Safari performance boost */
+}
+
+/* Safari-specific optimizations */
+@supports (-webkit-touch-callout: none) {
+    /* CSS specific to iOS devices */
+    .modal-overlay {
+        -webkit-backdrop-filter: blur(5px); /* Safari blur effect for modals */
+    }
+    
+    /* Fix Safari momentum scrolling issues */
+    body {
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Remove tap highlight color on Safari */
+    * {
+        -webkit-tap-highlight-color: transparent;
+    }
 }
