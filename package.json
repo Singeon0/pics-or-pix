@@ -11,6 +11,7 @@
     "call-bind-apply-helpers": "^1.0.1",
     "call-bound": "^1.0.3",
     "caniuse-lite": "^1.0.30001690",
+    "compression": "^1.8.0",
     "content-disposition": "^0.5.4",
     "content-type": "^1.0.5",
     "convert-source-map": "^2.0.0",
