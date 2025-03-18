@@ -157,14 +157,14 @@ function showSinglePortfolio(folderName) {
             grid.style.opacity = "0"; // Start hidden
             grid.style.transition = "opacity 0.5s ease-in-out";
 
-            // Shuffle the images array before creating elements
-            const shuffledImages = shuffleArray([...data.images]);
+            // Sort the images array by name in reverse order
+            const sortedImages = [...data.images].sort().reverse();
 
             // Store the current portfolio images for modal navigation
-            currentPortfolioImages = shuffledImages;
+            currentPortfolioImages = sortedImages;
 
             // Create images with lazy loading
-            shuffledImages.forEach((imgSrc, index) => {
+            sortedImages.forEach((imgSrc, index) => {
                 const imgContainer = createImage(imgSrc, index);
                 grid.appendChild(imgContainer);
             });
