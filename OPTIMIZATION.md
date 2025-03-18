@@ -12,12 +12,14 @@
 ## Performance Improvements
 - ✅ Implement image optimization and WebP conversion
 - ✅ Add responsive image srcsets for different viewport sizes
+- ✅ Implement HTTP/2 for improved performance
+- ✅ Add HTTP/3 support preparation via Alt-Svc headers
 - Consider CDN integration for image delivery
 - Implement service worker for offline capabilities
 - Add preloading for critical resources
 - Optimize JavaScript bundle size
 - Cache API responses for frequently accessed content
-- Use HTTP/2 server push for critical assets
+- Implement full HTTP/3 (QUIC) when full Nginx HTTP/3 support is available
 
 ## User Experience Refinements
 - Add loading indicators during API calls

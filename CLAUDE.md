@@ -15,6 +15,22 @@
 - `npm install --production` - Install production dependencies
 - `npm run optimize-images` - Run the image optimization script manually
 
+## Server Infrastructure
+- HTTP/2 is enabled for improved performance
+- HTTP/3 preparation with Alt-Svc headers for future support
+- HTTPS is configured with Let's Encrypt certificates
+- Nginx serves as reverse proxy (config: `/etc/nginx/sites-available/pics-or-pix.uk.conf`)
+- Full HTTP/3 implementation details in `/var/www/pics-or-pix/HTTP3-IMPLEMENTATION.md`
+
+## Repository Information
+- Git repository located at `/var/www/pics-or-pix`
+- Main branch is used for production
+- Commits should follow conventional commit format
+- Run `git status` to check for changes
+- Run `git add .` to stage all changes
+- Run `git commit -m "message"` to create a commit
+- Run `git push origin main` to push to remote
+
 ## Code Style Guidelines
 - **Naming**: camelCase for variables/functions, PascalCase for classes
 - **Formatting**: 4-space indentation, semicolons required
