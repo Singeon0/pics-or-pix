@@ -1,5 +1,7 @@
 # Optimization Opportunities for Pics-or-Pix
 
+*Last updated: March 18, 2025*
+
 ## Security Enhancements
 - Enable and configure Content Security Policy (currently disabled in Helmet)
 - Consider implementing Subresource Integrity for external resources
@@ -8,8 +10,8 @@
 - Add security scanning for dependencies with npm audit
 
 ## Performance Improvements
-- Implement image optimization and WebP conversion
-- Add responsive image srcsets for different viewport sizes
+- ✅ Implement image optimization and WebP conversion
+- ✅ Add responsive image srcsets for different viewport sizes
 - Consider CDN integration for image delivery
 - Implement service worker for offline capabilities
 - Add preloading for critical resources
@@ -31,7 +33,7 @@
 - Implement rate limiting for API endpoints
 - Add request caching for repeated portfolio requests
 - Consider Redis for session handling if adding user accounts
-- Implement image optimization server-side
+- ✅ Implement image optimization server-side
 - Add more robust input validation and sanitization
 - Implement retries for failed operations
 - Set up automatic database backups if a database is added

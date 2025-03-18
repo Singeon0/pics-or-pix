@@ -1,7 +1,10 @@
 # CLAUDE.md - Project Documentation
 
+*Last updated: March 18, 2025*
+
 ## Build Commands
 - `npm start` - Start the Express server 
+- `npm run start:optimized` - Start the server with image optimization
 - `node index.js` - Alternative way to start the server
 - `pm2 start ecosystem.config.js` - Start with PM2 in production with cluster mode
 - `pm2 reload pics-or-pix` - Zero-downtime reload of the application
@@ -10,6 +13,7 @@
 - `nginx -t && systemctl reload nginx` - Test and reload Nginx configuration
 - `sudo tail -f /var/log/pics-or-pix/error.log` - Check application error logs
 - `npm install --production` - Install production dependencies
+- `npm run optimize-images` - Run the image optimization script manually
 
 ## Code Style Guidelines
 - **Naming**: camelCase for variables/functions, PascalCase for classes
@@ -23,9 +27,12 @@
 - **API Design**: RESTful endpoints with descriptive names (e.g., /api/portfolios)
 - **File Structure**:
   - `index.js`: Main Express server with API endpoints
+  - `image-optimizer.js`: Image optimization middleware and utilities
+  - `/scripts/optimize-images.js`: WebP conversion utility
   - `/public/desktop/`: Desktop-specific frontend files
   - `/public/mobile/`: Mobile-specific frontend files
   - `/public/images/`: Portfolio images (each subfolder with cover.jpg)
+  - `/public/images-optimized/`: WebP and responsive image variants
 
 ## API Endpoints
 - `GET /api/portfolios`: List of portfolio folders with cover images

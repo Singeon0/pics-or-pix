@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: "pics-or-pix",
-    script: "index.js",
+    script: "start-with-optimization.js",
     instances: "max",
     exec_mode: "cluster",
     env: {

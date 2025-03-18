@@ -186,7 +186,7 @@ function showSinglePortfolio(folderName) {
 }
 
 /**
- * Creates an image element with lazy loading
+ * Creates an image element with lazy loading and WebP support
  * @param {string} imgSrc - The source URL of the image
  * @param {number} index - The index of the image in the portfolio
  * @returns {HTMLElement}
@@ -195,13 +195,68 @@ function createImage(imgSrc, index) {
     const imgContainer = document.createElement("div");
     imgContainer.className = "image-container";
 
+    // Check if this browser supports WebP
+    const supportsWebP = localStorage.getItem('supportsWebP');
+    const checkWebPSupport = async () => {
+        if (supportsWebP !== null) return supportsWebP === 'true';
+        
+        try {
+            // Try to decode a WebP image
+            const webPCheck = new Image();
+            webPCheck.src = 'data:image/webp;base64,UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==';
+            await new Promise(resolve => {
+                webPCheck.onload = webPCheck.onerror = () => resolve(webPCheck.height === 1);
+            });
+            const result = webPCheck.height === 1;
+            localStorage.setItem('supportsWebP', result.toString());
+            return result;
+        } catch (e) {
+            localStorage.setItem('supportsWebP', 'false');
+            return false;
+        }
+    };
+
+    // Create optimized image path for WebP
+    const getWebPPath = (path) => {
+        // Convert /images/folder/file.jpg to /images-optimized/folder/file.webp
+        const basePath = path.replace('/images/', '/images-optimized/');
+        const baseName = basePath.substring(0, basePath.lastIndexOf('.'));
+        return `${baseName}.webp`;
+    };
+
+    // Create picture element for responsive images
+    const picture = document.createElement('picture');
+    
+    // If WebP is supported, add WebP source
+    checkWebPSupport().then(isSupported => {
+        if (isSupported) {
+            const webpSource = document.createElement('source');
+            webpSource.type = 'image/webp';
+            
+            // Create src-set for responsive WebP images
+            const webpSrcPath = getWebPPath(imgSrc);
+            
+            // Add srcset for responsive sizes
+            const sizesArray = [320, 640, 1024, 1920];
+            const webpSrcset = sizesArray.map(size => {
+                const baseName = webpSrcPath.substring(0, webpSrcPath.lastIndexOf('.'));
+                return `${baseName}-${size}.webp ${size}w`;
+            }).join(', ');
+            
+            webpSource.srcset = webpSrcset;
+            webpSource.sizes = '(max-width: 600px) 320px, (max-width: 1200px) 640px, (max-width: 1800px) 1024px, 1920px';
+            picture.appendChild(webpSource);
+        }
+    });
+
+    // Create fallback img element
     const img = document.createElement("img");
-    // Set a placeholder image or leave src empty
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    // Store the actual image URL in data-src
     img.dataset.src = imgSrc;
     img.alt = `Portfolio image ${index + 1}`;
     img.className = 'lazy';
+    
+    picture.appendChild(img);
 
     // Add click event for modal
     imgContainer.addEventListener('click', () => {
@@ -211,7 +266,7 @@ function createImage(imgSrc, index) {
         }
     });
 
-    imgContainer.appendChild(img);
+    imgContainer.appendChild(picture);
     return imgContainer;
 }
 
@@ -426,9 +481,12 @@ function loadImage(img) {
     if (actualSrc) {
         img.src = actualSrc;
         img.addEventListener('load', () => {
-            // Add orientation class to parent container
+            // Add orientation class to parent container (image-container div)
             const orientation = getImageOrientation(img);
-            img.parentElement.classList.add(orientation);
+            const container = img.closest('.image-container');
+            if (container) {
+                container.classList.add(orientation);
+            }
 
             img.classList.remove('lazy');
             img.removeAttribute('data-src');

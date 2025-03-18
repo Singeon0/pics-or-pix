@@ -58,8 +58,10 @@ Nginx is configured as a reverse proxy with the following features:
 - Gzip compression enabled for text-based file types
 - Browser caching configured for static assets (7 days)
 - Image caching configured for 30 days
+- Optimized images caching for 60 days with WebP support
 - Security headers implemented (XSS Protection, Content-Type Options, etc.)
 - Separate location blocks for API and static files
+- Content negotiation with Vary headers for WebP images
 
 **To Reload Nginx After Configuration Changes**:
 ```bash
@@ -79,9 +81,11 @@ The Node.js application is the core of the website:
 **Directory Structure**:
 - `/var/www/pics-or-pix/` - Root application directory
 - `/var/www/pics-or-pix/public/` - Static files
-  - `/var/www/pics-or-pix/public/images/` - Image directories
+  - `/var/www/pics-or-pix/public/images/` - Original image directories
+  - `/var/www/pics-or-pix/public/images-optimized/` - WebP and responsive images
   - `/var/www/pics-or-pix/public/desktop/` - Desktop-specific resources
   - `/var/www/pics-or-pix/public/mobile/` - Mobile-specific resources
+- `/var/www/pics-or-pix/scripts/` - Utility scripts (including image optimization)
 - `/var/www/pics-or-pix/node_modules/` - Node.js dependencies
 
 **To Update Application**:
@@ -209,9 +213,12 @@ sudo /root/backup-pics-or-pix.sh
 ### Application Files
 - **Application Root**: `/var/www/pics-or-pix/`
 - **Main Application**: `/var/www/pics-or-pix/index.js`
+- **Image Optimizer**: `/var/www/pics-or-pix/image-optimizer.js`
+- **Optimization Script**: `/var/www/pics-or-pix/scripts/optimize-images.js`
 - **Package Info**: `/var/www/pics-or-pix/package.json`
 - **Public Files**: `/var/www/pics-or-pix/public/`
-- **Images Directory**: `/var/www/pics-or-pix/public/images/`
+- **Original Images**: `/var/www/pics-or-pix/public/images/`
+- **Optimized Images**: `/var/www/pics-or-pix/public/images-optimized/`
 
 ### Log Files
 - **Application Logs**: `/var/log/pics-or-pix/`
@@ -316,7 +323,16 @@ apt autoremove        # Remove unnecessary packages
 
 The following changes have been implemented to optimize the server:
 
-1. **Log Directory Setup**:
+1. **Image Optimization System** (March 18, 2025):
+   - Added WebP conversion with cwebp for all images
+   - Created responsive image sizes (320px, 640px, 1024px, 1920px)
+   - Updated frontend to use <picture> element with WebP sources
+   - Implemented WebP detection and fallbacks for browser compatibility
+   - Added enhanced caching (60 days) for optimized images in Nginx
+   - Created automated image optimization script
+   - Modified PM2 startup to run image optimization when needed
+
+2. **Log Directory Setup**:
    - Created `/var/log/pics-or-pix/` with proper ownership and permissions
 
 2. **PM2 Configuration**: 
@@ -367,4 +383,4 @@ The following changes have been implemented to optimize the server:
 
 This documentation serves as a comprehensive guide for managing your Pics-or-Pix server. Keep it updated as you make changes to your configuration or application deployment.
 
-**Last Updated**: March 16, 2025
+**Last Updated**: March 18, 2025

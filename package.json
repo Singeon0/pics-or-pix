@@ -102,7 +102,9 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "node index.js",
+    "start:optimized": "node start-with-optimization.js",
+    "optimize-images": "node scripts/optimize-images.js"
   },
   "keywords": [],
   "author": "",
