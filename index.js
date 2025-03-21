@@ -9,6 +9,9 @@ const PORT = process.env.PORT || 3000;
 // Enable Gzip compression for all requests
 app.use(compression());
 
+// Add support for AVIF MIME type
+express.static.mime.define({'image/avif': ['avif']});
+
 // Helper function to detect mobile devices
 const isMobile = (req) => {
     const userAgent = req.headers['user-agent'] || '';
@@ -47,7 +50,11 @@ app.use(express.static(path.join(__dirname, "public")));
 const getImagesFromFolder = (folderPath, folderName) => {
     try {
         return fs.readdirSync(folderPath)
-            .filter(file => file !== 'cover.jpg') // Exclude cover.jpg
+            .filter(file => {
+                // Exclude cover.jpg and check for supported image formats
+                return file !== 'cover.jpg' && 
+                       /\.(jpe?g|png|gif|webp|avif)$/i.test(file);
+            })
             .map(file => `/images/${folderName}/${file}`);
     } catch (err) {
         console.error(`Error reading folder ${folderPath}:`, err);
@@ -74,7 +81,7 @@ app.get("/api/portfolios", (req, res) => {
         for (const folder of folders) {
             const folderPath = path.join(imagesDir, folder);
             const files = fs.readdirSync(folderPath);
-            const nonCoverImage = files.find(file => file !== 'cover.jpg');
+            const nonCoverImage = files.find(file => file !== 'cover.jpg' && file !== 'cover.avif');
             if (nonCoverImage) {
                 completeCollectionCover = `/images/${folder}/${nonCoverImage}`;
                 break;
@@ -82,10 +89,19 @@ app.get("/api/portfolios", (req, res) => {
         }
 
         // Add Complete Collection to portfolios list
-        const portfolios = folders.map((folderName) => ({
-            name: folderName,
-            cover: `/images/${folderName}/cover.jpg`,
-        }));
+        const portfolios = folders.map((folderName) => {
+            // Check for cover image in different formats
+            const folderPath = path.join(imagesDir, folderName);
+            const files = fs.readdirSync(folderPath);
+            
+            // First check for cover.avif, then fall back to cover.jpg
+            const coverFile = files.find(file => file === 'cover.avif') || 'cover.jpg';
+            
+            return {
+                name: folderName,
+                cover: `/images/${folderName}/${coverFile}`,
+            };
+        });
 
         if (completeCollectionCover) {
             portfolios.unshift({

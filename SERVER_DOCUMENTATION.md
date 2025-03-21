@@ -649,6 +649,12 @@ Both desktop and mobile implementations follow the same pattern:
 - **Mobile Browsers**: Optimized experience with specific enhancements for:
   - Safari on iOS (viewport fixes, momentum scrolling)
   - Chrome on Android (touch optimizations)
+- **Image Format Support**:
+  - JPEG/JPG: All browsers
+  - PNG: All browsers
+  - GIF: All browsers
+  - WebP: Most modern browsers
+  - AVIF: Chrome 85+, Firefox 93+, Safari 16+
 
 ### Future Enhancements
 

@@ -58,5 +58,6 @@ export const API = {
 export const IMAGES = {
   LAZY_LOAD_MARGIN: '600px 0px',
   LAZY_LOAD_THRESHOLD: 0.001,
-  PLACEHOLDER: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+  PLACEHOLDER: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+  SUPPORTED_FORMATS: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif']
 };

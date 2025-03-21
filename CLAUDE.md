@@ -98,6 +98,14 @@ The application code has been refactored to improve:
    - Optimized for Safari mobile with specific fixes
 
 ## Recent Changes
+- **2025-03-21**: Added AVIF image format support
 - **2025-03-21**: Refactored frontend code for better modularity and performance
 - **2025-03-21**: Removed unused image-optimizer.js file and updated PM2 configuration
 - **2025-03-18**: Added HTTP/2 support and performance optimizations
+
+## Supported Image Formats
+- JPEG/JPG: All browsers
+- PNG: All browsers
+- GIF: All browsers
+- WebP: Most modern browsers
+- AVIF: Chrome 85+, Firefox 93+, Safari 16+
