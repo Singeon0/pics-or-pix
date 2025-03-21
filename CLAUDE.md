@@ -43,11 +43,9 @@
 - **API Design**: RESTful endpoints with descriptive names (e.g., /api/portfolios)
 - **File Structure**:
   - `index.js`: Main Express server with API endpoints
-  - `/scripts/optimize-images.js`: WebP conversion utility
   - `/public/desktop/`: Desktop-specific frontend files
   - `/public/mobile/`: Mobile-specific frontend files
   - `/public/images/`: Portfolio images (each subfolder with cover.jpg)
-  - `/public/images-optimized/`: WebP and responsive image variants
 
 ## API Endpoints
 - `GET /api/portfolios`: List of portfolio folders with cover images
@@ -67,4 +65,3 @@ This photography website displays multiple portfolios with separate experiences 
 ## Recent Changes
 - **2025-03-21**: Removed unused image-optimizer.js file and updated PM2 configuration
 - **2025-03-18**: Added HTTP/2 support and performance optimizations
-- **2025-03-18**: Implemented WebP conversion and responsive images

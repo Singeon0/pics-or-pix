@@ -60,10 +60,9 @@ Nginx is configured as a reverse proxy with the following features:
 - Gzip compression enabled for text-based file types
 - Browser caching configured for static assets (7 days)
 - Image caching configured for 30 days
-- Optimized images caching for 60 days with WebP support
+- Optimized images caching for 60 days
 - Security headers implemented (XSS Protection, Content-Type Options, etc.)
 - Separate location blocks for API and static files
-- Content negotiation with Vary headers for WebP images
 - HTTP/2 support enabled
 - Alt-Svc headers for future HTTP/3 support
 
@@ -85,11 +84,10 @@ The Node.js application is the core of the website:
 **Directory Structure**:
 - `/var/www/pics-or-pix/` - Root application directory
 - `/var/www/pics-or-pix/public/` - Static files
-  - `/var/www/pics-or-pix/public/images/` - Original image directories
-  - `/var/www/pics-or-pix/public/images-optimized/` - WebP and responsive images
+  - `/var/www/pics-or-pix/public/images/` - Image directories
   - `/var/www/pics-or-pix/public/desktop/` - Desktop-specific resources
   - `/var/www/pics-or-pix/public/mobile/` - Mobile-specific resources
-- `/var/www/pics-or-pix/scripts/` - Utility scripts (including image optimization)
+- `/var/www/pics-or-pix/scripts/` - Utility scripts
 - `/var/www/pics-or-pix/node_modules/` - Node.js dependencies
 
 **To Update Application**:
@@ -154,17 +152,6 @@ This dual-layer approach ensures:
 2. Express handles compression for dynamic API responses
 3. Fallback compression if either layer is bypassed
 
-### Image Optimization
-
-#### WebP Conversion
-- Images are automatically converted to WebP format
-- Original format preserved for browsers without WebP support
-- Implementation in `/var/www/pics-or-pix/scripts/optimize-images.js`
-
-#### Responsive Images
-- Multiple resolutions generated for different device sizes
-- Srcset and sizes attributes used for responsive loading
-- Content negotiation via Accept header
 
 ### Caching Strategy
 
@@ -435,11 +422,9 @@ sudo /root/backup-pics-or-pix.sh
 ### Application Files
 - **Application Root**: `/var/www/pics-or-pix/`
 - **Main Application**: `/var/www/pics-or-pix/index.js`
-- **Optimization Script**: `/var/www/pics-or-pix/scripts/optimize-images.js`
 - **Package Info**: `/var/www/pics-or-pix/package.json`
 - **Public Files**: `/var/www/pics-or-pix/public/`
-- **Original Images**: `/var/www/pics-or-pix/public/images/`
-- **Optimized Images**: `/var/www/pics-or-pix/public/images-optimized/`
+- **Images**: `/var/www/pics-or-pix/public/images/`
 
 ### Log Files
 - **Application Logs**: `/var/log/pics-or-pix/`
@@ -554,19 +539,10 @@ The following changes have been implemented to optimize the server:
    - Added Alt-Svc header for future HTTP/3 support awareness
 
 2. **Image Optimization System** (March 18, 2025):
-   - Added WebP conversion with cwebp for all images
-   - Created responsive image sizes (320px, 640px, 1024px, 1920px)
-   - Updated frontend to use <picture> element with WebP sources
-   - Implemented WebP detection and fallbacks for browser compatibility
    - Added enhanced caching (60 days) for optimized images in Nginx
-   - Created automated image optimization script
-   - Modified PM2 startup to run image optimization when needed
 
-3. **Image Optimizer Removal** (March 21, 2025):
-   - Removed unused image-optimizer.js file
-   - Updated index.js to remove references to the image optimizer
+3. **Configuration Update** (March 21, 2025):
    - Updated PM2 configuration to start index.js directly
-   - Consolidated image optimization documentation
 
 4. **Log Directory Setup**:
    - Created `/var/log/pics-or-pix/` with proper ownership and permissions
