@@ -6,12 +6,14 @@
 3. [Web Server Configuration](#web-server-configuration)
 4. [Node.js Application](#nodejs-application)
 5. [Process Management](#process-management)
-6. [Security Measures](#security-measures)
-7. [Logging Setup](#logging-setup)
-8. [Backup Procedures](#backup-procedures)
-9. [Important File Locations](#important-file-locations)
-10. [Troubleshooting Guide](#troubleshooting-guide)
-11. [Maintenance Tasks](#maintenance-tasks)
+6. [Performance Optimizations](#performance-optimizations)
+7. [HTTP/3 Implementation Plan](#http3-implementation-plan)
+8. [Security Measures](#security-measures)
+9. [Logging Setup](#logging-setup)
+10. [Backup Procedures](#backup-procedures)
+11. [Important File Locations](#important-file-locations)
+12. [Troubleshooting Guide](#troubleshooting-guide)
+13. [Maintenance Tasks](#maintenance-tasks)
 
 ## Server Overview
 
@@ -62,6 +64,8 @@ Nginx is configured as a reverse proxy with the following features:
 - Security headers implemented (XSS Protection, Content-Type Options, etc.)
 - Separate location blocks for API and static files
 - Content negotiation with Vary headers for WebP images
+- HTTP/2 support enabled
+- Alt-Svc headers for future HTTP/3 support
 
 **To Reload Nginx After Configuration Changes**:
 ```bash
@@ -120,6 +124,224 @@ pm2 monit                     # Monitor all processes
 PM2 is configured to start on system boot through:
 - PM2 startup script: `pm2-root` systemd service
 - Saved process list via: `pm2 save`
+
+## Performance Optimizations
+
+*Last updated: March 21, 2025*
+
+### Compression
+
+#### Nginx Compression
+Gzip compression is configured in the Nginx server block:
+- `gzip on` - Enables gzip compression
+- `gzip_comp_level 6` - Sets compression level (1-9, higher = more compression but more CPU)
+- `gzip_min_length 256` - Only compress responses larger than 256 bytes
+- `gzip_proxied any` - Compress responses to proxied requests
+- `gzip_vary on` - Adds "Vary: Accept-Encoding" header
+- `gzip_types` - List of MIME types to compress
+
+Configuration location: `/etc/nginx/sites-available/pics-or-pix.uk.conf`
+
+#### Express Compression
+The application also uses the Express compression middleware as a second layer:
+- Installed via npm: `compression`
+- Implemented in `index.js`
+- Compresses all compatible responses
+- Works for both static and dynamic content
+
+This dual-layer approach ensures:
+1. Nginx handles compression for static assets
+2. Express handles compression for dynamic API responses
+3. Fallback compression if either layer is bypassed
+
+### Image Optimization
+
+#### WebP Conversion
+- Images are automatically converted to WebP format
+- Original format preserved for browsers without WebP support
+- Implementation in `/var/www/pics-or-pix/scripts/optimize-images.js`
+
+#### Responsive Images
+- Multiple resolutions generated for different device sizes
+- Srcset and sizes attributes used for responsive loading
+- Content negotiation via Accept header
+
+### Caching Strategy
+
+#### Static Assets
+- Long cache lifetimes for static assets (7 days)
+- `Cache-Control: public, max-age=604800` header
+- File fingerprinting for cache busting
+
+#### Images
+- Extended cache lifetimes (30-60 days)
+- Immutable flag for improved caching
+- Different policies for original vs. optimized images
+
+### HTTP/2 Support
+- Enabled in Nginx configuration
+- Multiplexing for parallel resource loading
+- Header compression
+- Server push capabilities (not currently used)
+
+### Performance Monitoring
+- Use Chrome DevTools Network tab to monitor compression ratios
+- Check response headers for:
+  - `Content-Encoding: gzip` - Confirms compression is working
+  - `Vary: Accept-Encoding` - Ensures proper caching
+- Verify Gzip is working with: `curl -H "Accept-Encoding: gzip" -I https://pics-or-pix.uk/`
+
+## HTTP/3 Implementation Plan
+
+*Created: March 18, 2025*
+
+### Current Status
+
+HTTP/2 has been successfully implemented on the site, providing performance improvements through:
+- Multiplexed connections
+- Header compression
+- Binary protocol
+- Connection prioritization
+
+Additionally, Alt-Svc headers have been added to indicate HTTP/3 availability for compatible clients, preparing them for the future HTTP/3 implementation:
+```nginx
+add_header Alt-Svc 'h3=":443"; ma=86400, h3-29=":443"; ma=86400' always;
+```
+
+### HTTP/3 Implementation Requirements
+
+The current Ubuntu Nginx package (1.24.0) does not include HTTP/3 support. To implement full HTTP/3:
+
+1. **Upgrade Nginx with HTTP/3 Support**
+   - Option 1: Install from NGINX's official repository with HTTP/3 module
+   - Option 2: Compile Nginx from source with quiche library (Cloudflare's QUIC implementation)
+   - Option 3: Use nginx-quic branch which contains NGINX's HTTP/3 implementation
+
+2. **Requirements for HTTP/3**
+   - BoringSSL (not OpenSSL)
+   - QUICHE or ngtcp2 library
+   - Compilation with --with-http_v3_module flag
+
+3. **Implementation Steps**
+   ```bash
+   # Install build dependencies
+   apt install -y build-essential cmake golang libunwind-dev libpcre3-dev
+
+   # Clone required repositories
+   git clone https://github.com/google/boringssl.git
+   git clone --recursive https://github.com/nginx/nginx-quic.git
+
+   # Build BoringSSL
+   cd boringssl
+   mkdir build && cd build
+   cmake ..
+   make -j$(nproc)
+   cd ../..
+
+   # Build NGINX with HTTP/3
+   cd nginx-quic
+   ./auto/configure \
+     --prefix=/etc/nginx \
+     --sbin-path=/usr/sbin/nginx \
+     --conf-path=/etc/nginx/nginx.conf \
+     --error-log-path=/var/log/nginx/error.log \
+     --http-log-path=/var/log/nginx/access.log \
+     --pid-path=/var/run/nginx.pid \
+     --with-http_ssl_module \
+     --with-http_v2_module \
+     --with-http_v3_module \
+     --with-openssl=../boringssl \
+     --with-cc-opt="-I../boringssl/include" \
+     --with-ld-opt="-L../boringssl/build/ssl -L../boringssl/build/crypto"
+   make -j$(nproc)
+   make install
+   ```
+
+### Configuration Example for HTTP/3
+
+Once HTTP/3-capable Nginx is installed, update the configuration:
+
+```nginx
+server {
+    # Existing HTTP/2 configuration
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    
+    # Add HTTP/3 (QUIC) configuration
+    listen 443 quic;
+    listen [::]:443 quic;
+
+    # Enable HTTP/3
+    http3 on;
+    
+    # Add Alt-Svc header
+    add_header Alt-Svc 'h3=":443"; ma=86400, h3-29=":443"; ma=86400' always;
+
+    # SSL configuration
+    ssl_certificate /etc/letsencrypt/live/pics-or-pix.uk/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/pics-or-pix.uk/privkey.pem;
+    ssl_protocols TLSv1.3;    # QUIC requires TLSv1.3
+    
+    # Other configuration remains the same...
+}
+```
+
+### Testing HTTP/3
+
+After implementation, test HTTP/3 support with:
+
+```bash
+# Install curl with HTTP/3
+apt install curl-impersonate
+
+# Test
+curl-impersonate -I --http3 https://pics-or-pix.uk
+```
+
+Browser testing:
+- Chrome: Enable chrome://flags/#enable-quic
+- Firefox: Set network.http.http3.enabled to true in about:config
+
+### Potential Issues
+
+1. **UDP Port Accessibility**
+   - Ensure firewall allows UDP traffic on port 443
+   - Check if hosting provider blocks UDP on port 443
+
+2. **Performance Monitoring**
+   - Set up monitoring to compare HTTP/2 vs HTTP/3 performance
+   - Track metrics like Time to First Byte (TTFB) and page load times
+
+3. **Backward Compatibility**
+   - Continue serving HTTP/2 for clients that don't support HTTP/3
+   - Monitor errors in logs after implementation
+
+### Resource Requirements
+
+- Increased memory usage (QUIC implementation requires more memory)
+- Additional CPU usage for UDP packet processing
+- Possible need for firewall configuration changes
+
+### Timeline
+
+1. **Preparation Phase** - Complete
+   - HTTP/2 implementation
+   - Alt-Svc header addition
+
+2. **Implementation Phase** - Next Steps
+   - Set up test environment
+   - Install HTTP/3-capable Nginx
+   - Test configuration
+   - Deploy to production
+
+3. **Monitoring Phase**
+   - Track HTTP/3 adoption
+   - Monitor performance improvements
+   - Address any issues
+
+### Conclusion
+
+The website is now prepared for HTTP/3 with the Alt-Svc headers, informing compatible browsers about future HTTP/3 support. Full HTTP/3 implementation requires upgrading Nginx to a version with HTTP/3 capabilities.
 
 ## Security Measures
 
@@ -213,7 +435,6 @@ sudo /root/backup-pics-or-pix.sh
 ### Application Files
 - **Application Root**: `/var/www/pics-or-pix/`
 - **Main Application**: `/var/www/pics-or-pix/index.js`
-- **Image Optimizer**: `/var/www/pics-or-pix/image-optimizer.js`
 - **Optimization Script**: `/var/www/pics-or-pix/scripts/optimize-images.js`
 - **Package Info**: `/var/www/pics-or-pix/package.json`
 - **Public Files**: `/var/www/pics-or-pix/public/`
@@ -341,10 +562,16 @@ The following changes have been implemented to optimize the server:
    - Created automated image optimization script
    - Modified PM2 startup to run image optimization when needed
 
-2. **Log Directory Setup**:
+3. **Image Optimizer Removal** (March 21, 2025):
+   - Removed unused image-optimizer.js file
+   - Updated index.js to remove references to the image optimizer
+   - Updated PM2 configuration to start index.js directly
+   - Consolidated image optimization documentation
+
+4. **Log Directory Setup**:
    - Created `/var/log/pics-or-pix/` with proper ownership and permissions
 
-2. **PM2 Configuration**: 
+5. **PM2 Configuration**: 
    - Configured cluster mode to utilize all available CPU cores
    - Set memory limit to 200MB to prevent excessive memory usage
    - Enabled automatic restart on failure
@@ -353,12 +580,12 @@ The following changes have been implemented to optimize the server:
    - Configured graceful shutdown and restart strategies
    - Disabled tracing for better performance
 
-3. **Systemd Service Improvements**:
+6. **Systemd Service Improvements**:
    - Updated service file to use journal logging instead of deprecated syslog
    - Enabled service to start on boot
    - Fixed service to properly integrate with PM2
 
-4. **Nginx Configuration Optimizations**:
+7. **Nginx Configuration Optimizations**:
    - Removed duplicate SSL directives
    - Enhanced gzip compression (level 6, more MIME types)
    - Optimized buffer sizes and timeouts
@@ -368,28 +595,28 @@ The following changes have been implemented to optimize the server:
    - Enhanced proxy buffer configuration
    - Added "immutable" to cache headers for images
 
-5. **System-Level Optimizations**:
+8. **System-Level Optimizations**:
    - Added 2GB swap file for improved memory management
    - Optimized kernel parameters via sysctl for web server performance
    - Increased file descriptor limits
    - Tuned TCP connection parameters
    - Optimized VM memory management (swappiness, cache pressure)
 
-6. **Security Enhancements**:
+9. **Security Enhancements**:
    - Installed and configured Fail2Ban
    - Set up protection for SSH and Nginx
    - Verified file permissions across the application
 
-7. **Backup System**:
-   - Created daily backup script
-   - Set up automatic rotation of old backups
-   - Configured logging of backup operations
+10. **Backup System**:
+    - Created daily backup script
+    - Set up automatic rotation of old backups
+    - Configured logging of backup operations
 
-8. **Permissions**:
-   - Corrected ownership of application files to www-data
+11. **Permissions**:
+    - Corrected ownership of application files to www-data
 
 ---
 
 This documentation serves as a comprehensive guide for managing your Pics-or-Pix server. Keep it updated as you make changes to your configuration or application deployment.
 
-**Last Updated**: March 18, 2025
+**Last Updated**: March 21, 2025

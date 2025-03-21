@@ -1,11 +1,11 @@
 # CLAUDE.md - Project Documentation
 
-*Last updated: March 18, 2025*
+*Last updated: March 21, 2025*
 
 ## Build Commands
 - `npm start` - Start the Express server 
-- `npm run start:optimized` - Start the server with image optimization
-- `node index.js` - Alternative way to start the server
+- `node index.js` - Start the server directly
+- `pm2 start index.js --name pics-or-pix` - Start with PM2 in fork mode
 - `pm2 start ecosystem.config.js` - Start with PM2 in production with cluster mode
 - `pm2 reload pics-or-pix` - Zero-downtime reload of the application
 - `pm2 logs pics-or-pix` - View application logs
@@ -20,10 +20,10 @@
 - HTTP/3 preparation with Alt-Svc headers for future support
 - HTTPS is configured with Let's Encrypt certificates
 - Nginx serves as reverse proxy (config: `/etc/nginx/sites-available/pics-or-pix.uk.conf`)
-- Full HTTP/3 implementation details in `/var/www/pics-or-pix/HTTP3-IMPLEMENTATION.md`
+- Full documentation in `/var/www/pics-or-pix/SERVER_DOCUMENTATION.md`
 
 ## Repository Information
-- Git repository located at `/var/www/pics-or-pix`
+- `/var/www/pics-or-pix` is a Git repository
 - Main branch is used for production
 - Commits should follow conventional commit format
 - Run `git status` to check for changes
@@ -43,7 +43,6 @@
 - **API Design**: RESTful endpoints with descriptive names (e.g., /api/portfolios)
 - **File Structure**:
   - `index.js`: Main Express server with API endpoints
-  - `image-optimizer.js`: Image optimization middleware and utilities
   - `/scripts/optimize-images.js`: WebP conversion utility
   - `/public/desktop/`: Desktop-specific frontend files
   - `/public/mobile/`: Mobile-specific frontend files
@@ -64,3 +63,8 @@
 
 ## Project Structure
 This photography website displays multiple portfolios with separate experiences for desktop and mobile devices. It automatically discovers any new portfolio folder uploaded, without needing manual HTML updates. Key technologies include Node.js+Express.js for the server, with dynamic content loaded via JavaScript API calls.
+
+## Recent Changes
+- **2025-03-21**: Removed unused image-optimizer.js file and updated PM2 configuration
+- **2025-03-18**: Added HTTP/2 support and performance optimizations
+- **2025-03-18**: Implemented WebP conversion and responsive images

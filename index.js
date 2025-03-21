@@ -2,20 +2,12 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const compression = require("compression");
-const imageOptimizer = require("./image-optimizer");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Enable Gzip compression for all requests
 app.use(compression());
-
-// Initialize the basic image system
-try {
-    imageOptimizer.initialize(app);
-} catch (error) {
-    console.error("Error initializing image system:", error);
-}
 
 // Helper function to detect mobile devices
 const isMobile = (req) => {
