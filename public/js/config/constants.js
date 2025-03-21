@@ -56,7 +56,7 @@ export const API = {
 
 // Image related constants
 export const IMAGES = {
-  LAZY_LOAD_MARGIN: '250px 0px',
-  LAZY_LOAD_THRESHOLD: 0.025,
+  LAZY_LOAD_MARGIN: '600px 0px',
+  LAZY_LOAD_THRESHOLD: 0.001,
   PLACEHOLDER: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
 };
