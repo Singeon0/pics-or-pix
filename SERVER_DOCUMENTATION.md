@@ -14,7 +14,6 @@
 11. [Important File Locations](#important-file-locations)
 12. [Troubleshooting Guide](#troubleshooting-guide)
 13. [Maintenance Tasks](#maintenance-tasks)
-14. [Frontend Architecture](#frontend-architecture)
 
 ## Server Overview
 
@@ -88,7 +87,6 @@ The Node.js application is the core of the website:
   - `/var/www/pics-or-pix/public/images/` - Image directories
   - `/var/www/pics-or-pix/public/desktop/` - Desktop-specific resources
   - `/var/www/pics-or-pix/public/mobile/` - Mobile-specific resources
-  - `/var/www/pics-or-pix/public/js/` - Shared JavaScript modules
 - `/var/www/pics-or-pix/scripts/` - Utility scripts
 - `/var/www/pics-or-pix/node_modules/` - Node.js dependencies
 
@@ -527,157 +525,71 @@ apt autoremove        # Remove unnecessary packages
   - `df -h` for disk space
   - `netstat -tuln` for network connections
 
-## Frontend Architecture
+## Recent Changes Implemented
 
-*Added: March 21, 2025*
+The following changes have been implemented to optimize the server:
 
-### Overview
+1. **HTTP/2 Implementation** (March 18, 2025):
+   - Enabled HTTP/2 protocol support in Nginx configuration
+   - Added IPv6 support with dedicated listen directives
+   - Optimized SSL configuration for HTTP/2 compatibility
+   - Removed conflicting SSL directives to maintain Certbot compatibility
+   - Verified implementation with Nginx configuration test
+   - Provides faster loading times through multiplexing and header compression
+   - Added Alt-Svc header for future HTTP/3 support awareness
 
-The frontend architecture has been redesigned to implement modern JavaScript practices and improve maintainability. Key improvements include:
+2. **Image Optimization System** (March 18, 2025):
+   - Added enhanced caching (60 days) for optimized images in Nginx
 
-1. **Modular Code Structure**
-   - Shared utility functions moved to common modules
-   - Platform-specific code separated from shared logic
-   - Configuration constants centralized in constants.js
-   - Component-based architecture with ES modules
+3. **Configuration Update** (March 21, 2025):
+   - Updated PM2 configuration to start index.js directly
 
-2. **New Directory Structure**
-   ```
-   /public/
-     /js/
-       /api/        - API client functions
-       /utils/      - Shared utility functions
-       /components/ - Reusable UI components
-       /config/     - Constants and configuration
-     /desktop/      - Desktop-specific files
-     /mobile/       - Mobile-specific files
-     /images/       - Portfolio images
-   ```
+4. **Log Directory Setup**:
+   - Created `/var/log/pics-or-pix/` with proper ownership and permissions
 
-3. **Loading Strategy**
-   - Core shared modules loaded first with ES module imports
-   - Platform-specific modules loaded dynamically
-   - Improved lazy loading for images using IntersectionObserver
-   - HTML updated to use type="module" for proper ES module loading
+5. **PM2 Configuration**: 
+   - Configured cluster mode to utilize all available CPU cores
+   - Set memory limit to 200MB to prevent excessive memory usage
+   - Enabled automatic restart on failure
+   - Configured to start on system boot
+   - Added Node.js optimization flags (--max-old-space-size=200, --optimize-for-size)
+   - Configured graceful shutdown and restart strategies
+   - Disabled tracing for better performance
 
-### Key Components
+6. **Systemd Service Improvements**:
+   - Updated service file to use journal logging instead of deprecated syslog
+   - Enabled service to start on boot
+   - Fixed service to properly integrate with PM2
 
-#### Shared Modules
+7. **Nginx Configuration Optimizations**:
+   - Removed duplicate SSL directives
+   - Enhanced gzip compression (level 6, more MIME types)
+   - Optimized buffer sizes and timeouts
+   - Improved static asset caching with open_file_cache
+   - Disabled access logs for static assets
+   - Added TCP optimizations (nodelay, nopush)
+   - Enhanced proxy buffer configuration
+   - Added "immutable" to cache headers for images
 
-1. **Config Module** (`/public/js/config/constants.js`)
-   - Centralizes all configuration values as exported constants
-   - Provides platform-specific overrides and detection
-   - Eliminates magic numbers throughout the codebase
-   - Contains selectors, class names, and animation durations
-   - Special configurations for different portfolio types
+8. **System-Level Optimizations**:
+   - Added 2GB swap file for improved memory management
+   - Optimized kernel parameters via sysctl for web server performance
+   - Increased file descriptor limits
+   - Tuned TCP connection parameters
+   - Optimized VM memory management (swappiness, cache pressure)
 
-2. **API Client** (`/public/js/api/portfolio-api.js`)
-   - Wraps all API calls in a single module with exported functions
-   - Implements proper error handling with try/catch
-   - Provides caching for repeated API calls using Map
-   - Consistent interface for portfolio and device detection
-   - Handles sorting of portfolio images
+9. **Security Enhancements**:
+   - Installed and configured Fail2Ban
+   - Set up protection for SSH and Nginx
+   - Verified file permissions across the application
 
-3. **Image Utils** (`/public/js/utils/image-utils.js`)
-   - Image manipulation utilities like dominant color extraction
-   - Lazy loading implementation with IntersectionObserver
-   - Responsive image handling and orientation detection
-   - Browser-specific optimizations for image loading
-   - Fallback for older browsers without IntersectionObserver
+10. **Backup System**:
+    - Created daily backup script
+    - Set up automatic rotation of old backups
+    - Configured logging of backup operations
 
-4. **DOM Utils** (`/public/js/utils/dom-utils.js`)
-   - Creation of UI elements with standardized interfaces
-   - DOM manipulation helpers for consistent styling
-   - Event handling utilities with proper cleanup
-   - Factory functions for common UI elements
-   - Platform-specific DOM manipulation
-
-5. **UI Components** (`/public/js/components/`)
-   - Modal component (`modal.js`) with platform-specific extensions
-   - Platform detection component (`platform.js`) for responsive design
-   - Exported as ES modules with proper encapsulation
-   - Object-oriented design patterns with classes
-   - Singleton pattern for shared components
-
-#### Platform-Specific Implementation
-
-Both desktop and mobile implementations follow the same pattern:
-
-1. **Entry Point** (`main.js`)
-   - Import shared modules
-   - Initialize platform detection
-   - Bootstrap application
-
-2. **Platform Extensions**
-   - Desktop: Mouse-based interactions
-   - Mobile: Touch-based interactions with Safari optimizations
-
-### Performance Improvements
-
-1. **Lazy Loading**
-   - Implemented with IntersectionObserver API for modern browsers
-   - Fallback with scroll listener for older browsers
-   - Optimized loading order based on viewport position
-   - Prefetching of images to reduce visible loading transitions
-   - Dynamic attribute and class switching to minimize repaints
-
-2. **Event Handling**
-   - Debounced and throttled event handlers for scroll and resize
-   - Passive event listeners where appropriate for better scrolling
-   - Improved touch event handling with proper gesture detection
-   - Consolidated event handlers to reduce memory usage
-   - Proper event cleanup to prevent memory leaks
-
-3. **Animation Optimization**
-   - Hardware-accelerated animations with CSS transforms
-   - Reduced layout thrashing with batched DOM reads/writes
-   - CSS transitions over JavaScript animations for better performance
-   - requestAnimationFrame for smoother JavaScript animations
-   - Reduced transition complexity for mobile devices
-
-4. **Rendering Performance**
-   - Reduced unnecessary DOM operations with element caching
-   - Batch DOM updates for improved rendering pipeline
-   - Properly sequenced animations to minimize reflows
-   - Image dimension detection for smoother layout
-   - Module preloading to reduce render-blocking resources
-
-### Browser Compatibility
-
-- **Modern Browsers**: Full functionality with optimal performance
-- **Older Browsers**: Graceful degradation with feature detection
-- **Mobile Browsers**: Optimized experience with specific enhancements for:
-  - Safari on iOS (viewport fixes, momentum scrolling)
-  - Chrome on Android (touch optimizations)
-- **Image Format Support**:
-  - JPEG/JPG: All browsers
-  - PNG: All browsers
-  - GIF: All browsers
-  - WebP: Most modern browsers
-  - AVIF: Chrome 85+, Firefox 93+, Safari 16+
-
-### Future Enhancements
-
-1. **Build Process**
-   - Implement module bundling with Vite or Rollup for production
-   - Add code minification and tree-shaking for smaller bundle size
-   - Implement CSS preprocessing with SASS
-   - Configure code splitting for improved loading performance
-   - Automated build and deployment pipeline
-
-2. **Progressive Enhancement**
-   - Service worker for offline functionality and caching
-   - Progressive Web App capabilities with installable web app
-   - Advanced image optimization and WebP conversion on upload
-   - Background image prefetching for faster navigation
-   - Client-side caching strategies for faster repeat visits
-
-3. **Accessibility Improvements**
-   - Improve keyboard navigation with ARIA enhancements
-   - Enhance screen reader support with semantic markup
-   - Better focus management for modal and navigation elements
-   - Color contrast improvements for vision-impaired users
-   - Responsive design improvements for various devices and screen readers
+11. **Permissions**:
+    - Corrected ownership of application files to www-data
 
 ---
 
