@@ -655,8 +655,8 @@ function initLazyLoading() {
         function lazyLoad() {
             const scrollTop = window.pageYOffset;
             lazyImages.forEach(img => {
-                if (img.offsetTop < window.innerHeight + scrollTop + 250) {
-                    loadImage(img);
+                if (img.offsetTop < window.innerHeight + scrollTop + 1200) {
+                loadImage(img);
                 }
             });
         }
@@ -686,7 +686,7 @@ function initLazyLoading() {
             }
         });
     }, {
-        rootMargin: '250px 0px', // Start loading images 250px before they enter viewport
+        rootMargin: '1200px 0px', // Start loading images 1200px before they enter viewport
         threshold: 0.025
     });
 

@@ -406,7 +406,7 @@ function initLazyLoading() {
             }
         });
     }, {
-        rootMargin: '250px 0px', // Start loading images 250px before they enter viewport
+        rootMargin: '1200px 0px', // Start loading images 1200px before they enter viewport
         threshold: 0.025
     });
 
