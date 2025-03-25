@@ -3,8 +3,8 @@
  *************************************************/
 
 // -- Timing & Animation
-const DELAY_BEFORE_SHOWING_PORTFOLIO = 5; // Delay (ms) before showing the portfolio grid
-const OVERLAY_FADE_DURATION = 150; // 150ms for overlay fade
+const DELAY_BEFORE_SHOWING_PORTFOLIO = 3; // Delay (ms) before showing the portfolio grid
+const OVERLAY_FADE_DURATION = 50; // 150ms for overlay fade
 
 // -- State Management
 let currentPortfolioImages = [];
@@ -406,7 +406,7 @@ function initLazyLoading() {
             }
         });
     }, {
-        rootMargin: '1200px 0px', // Start loading images 1200px before they enter viewport
+        rootMargin: '2000px 0px', // Start loading images 1200px before they enter viewport
         threshold: 0.025
     });
 
