@@ -87,6 +87,7 @@
     "side-channel-list": "^1.0.0",
     "side-channel-map": "^1.0.1",
     "side-channel-weakmap": "^1.0.2",
+    "simple-zstd": "^1.4.2",
     "source-map-js": "^1.2.1",
     "statuses": "^2.0.1",
     "toidentifier": "^1.0.1",
@@ -96,7 +97,8 @@
     "utils-merge": "^1.0.1",
     "vary": "^1.1.2",
     "vite": "^5.4.11",
-    "yallist": "^3.1.1"
+    "yallist": "^3.1.1",
+    "zstd-napi": "^0.0.10"
   },
   "optionalDependencies": {
     "fsevents": "^2.3.3"
