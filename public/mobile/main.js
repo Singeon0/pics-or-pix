@@ -707,9 +707,7 @@ function loadImage(img) {
         const tempImage = new Image();
         tempImage.onload = () => {
             img.src = actualSrc;
-            // Add orientation class to parent container
-            const orientation = getImageOrientation(tempImage);
-            img.parentElement.classList.add(orientation);
+            // No longer adding orientation class as we're preserving natural aspect ratio
             
             // Ensure image is properly rendered before removing lazy class
             requestAnimationFrame(() => {

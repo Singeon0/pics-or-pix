@@ -425,13 +425,7 @@ function loadImage(img) {
     if (actualSrc) {
         img.src = actualSrc;
         img.addEventListener('load', () => {
-            // Add orientation class to parent container (image-container div)
-            const orientation = getImageOrientation(img);
-            const container = img.closest('.image-container');
-            if (container) {
-                container.classList.add(orientation);
-            }
-
+            // No longer adding orientation class as we're preserving natural aspect ratio
             img.classList.remove('lazy');
             img.removeAttribute('data-src');
         });
