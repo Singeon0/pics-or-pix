@@ -155,13 +155,20 @@ app.use(express.static(path.join(__dirname, "public")));
 // Helper function to get all images from a folder
 const getImagesFromFolder = (folderPath, folderName) => {
     try {
-        return fs.readdirSync(folderPath)
-            .filter(file => {
-                // Exclude cover.jpg and check for supported image formats
-                return file !== 'cover.jpg' && 
-                       /\.(jpe?g|png|gif|webp|avif)$/i.test(file);
-            })
-            .map(file => `/images/${folderName}/${file}`);
+        const files = fs.readdirSync(folderPath);
+        
+        const filteredFiles = files.filter(file => {
+            // Exclude cover.jpg and check for supported image formats
+            return file !== 'cover.jpg' && 
+                   /\.(jpe?g|png|gif|webp|avif)$/i.test(file);
+        });
+        
+        return filteredFiles.map(file => {
+            // Create a properly encoded URL path that's safe for URLs and JSON
+            // We need to properly handle special characters in filenames
+            const encodedFile = encodeURIComponent(file);
+            return `/images/${encodeURIComponent(folderName)}/${encodedFile}`;
+        });
     } catch (err) {
         console.error(`Error reading folder ${folderPath}:`, err);
         return [];
@@ -236,12 +243,23 @@ app.get("/api/portfolios/:folderName", (req, res) => {
                 .filter(item => fs.statSync(path.join(imagesDir, item)).isDirectory());
 
             // Get all images from all folders
-            const allImages = folders.reduce((acc, folder) => {
-                const folderPath = path.join(imagesDir, folder);
-                const folderImages = getImagesFromFolder(folderPath, folder);
-                return [...acc, ...folderImages];
-            }, []);
-
+            let allImages = [];
+            
+            // Process each folder
+            for (const folder of folders) {
+                try {
+                    const folderPath = path.join(imagesDir, folder);
+                    const folderImages = getImagesFromFolder(folderPath, folder);
+                    allImages = [...allImages, ...folderImages];
+                } catch (folderErr) {
+                    console.error(`Error processing folder ${folder}:`, folderErr);
+                }
+            }
+            
+            // Ensure the Content-Type header is properly set with charset
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            
+            // Send the response with proper UTF-8 encoding
             res.json({
                 name: folderName,
                 images: allImages
@@ -254,16 +272,21 @@ app.get("/api/portfolios/:folderName", (req, res) => {
     }
 
     // Regular portfolio handling
-    const folderPath = path.join(imagesDir, folderName);
+    // Decode the URL-encoded folderName for filesystem access
+    const decodedFolderName = decodeURIComponent(folderName);
+    const folderPath = path.join(imagesDir, decodedFolderName);
 
     if (!fs.existsSync(folderPath)) {
         return res.status(404).json({ error: "Portfolio not found" });
     }
 
-    const images = getImagesFromFolder(folderPath, folderName);
-
+    const images = getImagesFromFolder(folderPath, decodedFolderName);
+    
+    // Ensure proper content type with charset
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    
     res.json({
-        name: folderName,
+        name: decodedFolderName,
         images,
     });
 });

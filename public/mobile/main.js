@@ -243,28 +243,40 @@ function showTapOverlay(item) {
  * Display them in a grid with lazy loading
  */
 function showSinglePortfolio(folderName) {
-    // Scroll to top immediately when function is called
-    window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-    });
+    console.log('showSinglePortfolio called with:', folderName);
+    
+    try {
+        // Scroll to top immediately when function is called
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
 
-    // Apply special styling for specific portfolios only
-    if (folderName.toLowerCase() === 'urbex' || folderName.toLowerCase() === 'moon') {
-        document.body.style.backgroundColor = 'black';
-        document.body.style.color = 'red';
-    } else {
-        // Reset styling for other portfolios (including Complete Collection)
-        document.body.style.backgroundColor = '';
-        document.body.style.color = '';
+        // Apply special styling for specific portfolios only
+        if (folderName.toLowerCase() === 'urbex' || folderName.toLowerCase() === 'moon') {
+            document.body.style.backgroundColor = 'black';
+            document.body.style.color = 'red';
+        } else {
+            // Reset styling for other portfolios (including Complete Collection)
+            document.body.style.backgroundColor = '';
+            document.body.style.color = '';
+        }
+    } catch (err) {
+        console.error('Error in initial part of showSinglePortfolio:', err);
     }
 
-    fetch(`/api/portfolios/${folderName}`)
-        .then((res) => res.json())
+    console.log('Fetching portfolio from URL:', `/api/portfolios/${encodeURIComponent(folderName)}`);
+    fetch(`/api/portfolios/${encodeURIComponent(folderName)}`)
+        .then((res) => {
+            console.log('Fetch response received:', res.status);
+            return res.json();
+        })
         .then((data) => {
-            const app = document.getElementById("app");
-            // Clear and build UI
-            app.innerHTML = "";
+            console.log('Data received:', data ? 'Data exists' : 'No data');
+            try {
+                const app = document.getElementById("app");
+                // Clear and build UI
+                app.innerHTML = "";
 
             // Create fixed header
             const fixedHeader = document.createElement("div");
@@ -314,9 +326,16 @@ function showSinglePortfolio(folderName) {
             // Show grid after a short delay
             setTimeout(() => {
                 grid.style.opacity = "1"; // Show grid
+                console.log('Grid display completed successfully');
             }, DELAY_BEFORE_SHOWING_PORTFOLIO);
+            } catch (err) {
+                console.error('Error processing portfolio data:', err);
+            }
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+            console.error('Error fetching portfolio data:', err);
+            console.error('Error stack:', err.stack);
+        });
 }
 
 /**
@@ -339,9 +358,15 @@ function createImage(imgSrc, index) {
 
     // Add click event for modal
     imgContainer.addEventListener('click', () => {
-        // Ensure image is loaded before opening modal
-        if (!img.classList.contains('lazy')) {
-            openModal(imgSrc, index);
+        try {
+            // Ensure image is loaded before opening modal
+            if (!img.classList.contains('lazy')) {
+                // Use the actual src attribute of the loaded image, not the original imgSrc
+                // This handles any URL encoding differences between server and client
+                openModal(img.src, index);
+            }
+        } catch (err) {
+            console.error(`Error in click event for image ${index}:`, err);
         }
     });
 

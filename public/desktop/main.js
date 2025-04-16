@@ -109,28 +109,40 @@ function showPortfolioList() {
  * Display them in a grid with lazy loading
  */
 function showSinglePortfolio(folderName) {
-    // Scroll to top immediately when function is called
-    window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-    });
+    console.log('showSinglePortfolio called with:', folderName);
+    
+    try {
+        // Scroll to top immediately when function is called
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
 
-    // Apply special styling for specific portfolios only
-    if (folderName.toLowerCase() === 'urbex' || folderName.toLowerCase() === 'moon') {
-        document.body.style.backgroundColor = 'black';
-        document.body.style.color = 'red';
-    } else {
-        // Reset styling for other portfolios (including Complete Collection)
-        document.body.style.backgroundColor = '';
-        document.body.style.color = '';
+        // Apply special styling for specific portfolios only
+        if (folderName.toLowerCase() === 'urbex' || folderName.toLowerCase() === 'moon') {
+            document.body.style.backgroundColor = 'black';
+            document.body.style.color = 'red';
+        } else {
+            // Reset styling for other portfolios (including Complete Collection)
+            document.body.style.backgroundColor = '';
+            document.body.style.color = '';
+        }
+    } catch (err) {
+        console.error('Error in initial part of showSinglePortfolio:', err);
     }
 
-    fetch(`/api/portfolios/${folderName}`)
-        .then((res) => res.json())
+    console.log('Fetching portfolio from URL:', `/api/portfolios/${encodeURIComponent(folderName)}`);
+    fetch(`/api/portfolios/${encodeURIComponent(folderName)}`)
+        .then((res) => {
+            console.log('Fetch response received:', res.status);
+            return res.json();
+        })
         .then((data) => {
-            const app = document.getElementById("app");
-            // Clear and build UI
-            app.innerHTML = "";
+            console.log('Data received:', data ? 'Data exists' : 'No data');
+            try {
+                const app = document.getElementById("app");
+                // Clear and build UI
+                app.innerHTML = "";
 
             // Create fixed header
             const fixedHeader = document.createElement("div");
@@ -180,9 +192,16 @@ function showSinglePortfolio(folderName) {
             // Show grid after a short delay
             setTimeout(() => {
                 grid.style.opacity = "1"; // Show grid
+                console.log('Grid display completed successfully');
             }, DELAY_BEFORE_SHOWING_PORTFOLIO);
+            } catch (err) {
+                console.error('Error processing portfolio data:', err);
+            }
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+            console.error('Error fetching portfolio data:', err);
+            console.error('Error stack:', err.stack);
+        });
 }
 
 /**
@@ -192,26 +211,45 @@ function showSinglePortfolio(folderName) {
  * @returns {HTMLElement}
  */
 function createImage(imgSrc, index) {
-    const imgContainer = document.createElement("div");
-    imgContainer.className = "image-container";
+    console.log(`Creating image ${index} with src: ${imgSrc}`);
+    try {
+        const imgContainer = document.createElement("div");
+        imgContainer.className = "image-container";
 
-    // Create img element
-    const img = document.createElement("img");
-    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    img.dataset.src = imgSrc;
-    img.alt = `Portfolio image ${index + 1}`;
-    img.className = 'lazy';
+        // Create img element
+        const img = document.createElement("img");
+        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        img.dataset.src = imgSrc;
+        img.alt = `Portfolio image ${index + 1}`;
+        img.className = 'lazy';
 
-    // Add click event for modal
-    imgContainer.addEventListener('click', () => {
-        // Ensure image is loaded before opening modal
-        if (!img.classList.contains('lazy')) {
-            openModal(imgSrc, index);
-        }
-    });
+        // Add click event for modal
+        imgContainer.addEventListener('click', () => {
+            try {
+                // Ensure image is loaded before opening modal
+                if (!img.classList.contains('lazy')) {
+                    // Use the actual src attribute of the loaded image, not the original imgSrc
+                    // This handles any URL encoding differences between server and client
+                    console.log(`Opening modal for image ${index}`);
+                    openModal(img.src, index);
+                } else {
+                    console.log(`Image ${index} not yet loaded, not opening modal`);
+                }
+            } catch (err) {
+                console.error(`Error in click event for image ${index}:`, err);
+            }
+        });
 
-    imgContainer.appendChild(img);
-    return imgContainer;
+        imgContainer.appendChild(img);
+        return imgContainer;
+    } catch (err) {
+        console.error(`Error creating image ${index}:`, err);
+        // Return a fallback container in case of error
+        const fallbackContainer = document.createElement("div");
+        fallbackContainer.className = "image-container error";
+        fallbackContainer.textContent = `Error loading image ${index}`;
+        return fallbackContainer;
+    }
 }
 
 /*************************************************
@@ -397,23 +435,39 @@ function getDominantColor(img) {
  * Lazy loading implementation using Intersection Observer
  */
 function initLazyLoading() {
-    const imageObserver = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const img = entry.target;
-                loadImage(img);
-                observer.unobserve(img);
+    console.log('Initializing lazy loading...');
+    try {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                try {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        console.log(`Image intersecting, loading: ${img.dataset.src}`);
+                        loadImage(img);
+                        observer.unobserve(img);
+                    }
+                } catch (err) {
+                    console.error('Error in intersection observer callback:', err);
+                }
+            });
+        }, {
+            rootMargin: '2000px 0px', // Start loading images 1200px before they enter viewport
+            threshold: 0.025
+        });
+
+        // Observe all lazy images
+        const lazyImages = document.querySelectorAll('img.lazy');
+        console.log(`Found ${lazyImages.length} lazy images to observe`);
+        lazyImages.forEach(img => {
+            try {
+                imageObserver.observe(img);
+            } catch (err) {
+                console.error(`Error observing image: ${img.dataset.src}`, err);
             }
         });
-    }, {
-        rootMargin: '2000px 0px', // Start loading images 1200px before they enter viewport
-        threshold: 0.025
-    });
-
-    // Observe all lazy images
-    document.querySelectorAll('img.lazy').forEach(img => {
-        imageObserver.observe(img);
-    });
+    } catch (err) {
+        console.error('Error setting up lazy loading:', err);
+    }
 }
 
 /**
@@ -421,14 +475,33 @@ function initLazyLoading() {
  * @param {HTMLImageElement} img - The image element to load
  */
 function loadImage(img) {
-    const actualSrc = img.dataset.src;
-    if (actualSrc) {
-        img.src = actualSrc;
-        img.addEventListener('load', () => {
-            // No longer adding orientation class as we're preserving natural aspect ratio
-            img.classList.remove('lazy');
-            img.removeAttribute('data-src');
-        });
+    console.log(`Loading image: ${img.dataset.src}`);
+    try {
+        const actualSrc = img.dataset.src;
+        if (actualSrc) {
+            console.log(`Setting src to: ${actualSrc}`);
+            img.src = actualSrc;
+            img.addEventListener('load', () => {
+                try {
+                    console.log(`Image loaded successfully: ${actualSrc}`);
+                    // No longer adding orientation class as we're preserving natural aspect ratio
+                    img.classList.remove('lazy');
+                    img.removeAttribute('data-src');
+                } catch (err) {
+                    console.error(`Error in load event for image: ${actualSrc}`, err);
+                }
+            });
+            img.addEventListener('error', (err) => {
+                console.error(`Error loading image: ${actualSrc}`, err);
+                // Add error class to indicate loading failure
+                img.classList.add('error');
+                img.classList.remove('lazy');
+            });
+        } else {
+            console.warn('No data-src attribute found on image');
+        }
+    } catch (err) {
+        console.error('Error in loadImage function:', err);
     }
 }
 
